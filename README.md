@@ -4,9 +4,11 @@
 
 ### Quick start
 
-    #install.packages("devtools") # if devtools package not already installed, uncomment this line
-    # developers version
-    devtools::install_github("alexpkeil1/qgcomp", build_opts = c("--no-resave-data", "--no-manual", "--build-vignettes"))
+    # install developers version (requires devtools)
+    # install.packages("devtools")
+    # devtools::install_github("alexpkeil1/qgcomp", build_opts = c("--no-resave-data", "--no-manual", "--build-vignettes"))
+    # or install version from CRAN
+    install.packages("qgcomp")
     library("qgcomp")
     # using data from the qgcomp package
     data("metals", package="qgcomp")

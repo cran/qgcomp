@@ -1,15 +1,67 @@
 
-se_comb <- function(expnms, covmat){
-  #calculate standard error of weighted linear combination of random variables
+se_comb <- function(expnms, covmat, grad=NULL){
+  #' @title Calculate standard error of weighted linear combination of random variables
   # given a vector of weights and a covariance matrix (not exported)
-  # usage: qgcomp:::se_comb(expnms='x', covmat=summary(lmfit)$cov.scaled)
-  #calculate standard error of weighted linear combination of random variables
-  weightvec = rep(0, dim(covmat)[1])
-  weightvec[which(colnames(as.matrix(covmat)) %in% expnms)] = 1
-  wcovmat <- weightvec %*% t(weightvec) * covmat
-  var <- sum(wcovmat)
-  sqrt(var)
+  #' @description This function uses the Delta method to calculate standard errors that 
+  #' @details This function is a vectorized version of `quantile_f` from the `gWQS` 
+  #' package that also allows the use of externally defined breaks
+  #' usage: qgcomp:::se_comb(expnms='x', covmat=summary(lmfit)$cov.scaled)
+  #' E.g. here is simple version of the delta method for a linear combination:
+  #'  f(x) = x1 + x2 + x3
+  #' given gradient vector G = 
+  #'   [d(f(x))/dx1 = 1,
+  #'   d(f(x))/dx2 = 1,
+  #'   d(f(x))/dx3 = 1]
+  #' t(G) %*% cov(x) %*% G = delta variance
+  #' @param expnms a character vector with the names of the columns to be
+  #' of interest in the covariance matrix for a which a standard error will be
+  #' calculated (e.g. same as expnms in qgcomp fit)
+  #' @param covmat covariance matrix for parameters, e.g. from a model or 
+  #' bootstrap procedure
+  #' @param grad the "weight" vector for calculating the contribution of each variable
+  #' in expnms to the final standard error. For a linear combination, this is equal 
+  #' to a vector of ones (and is set automatically). Or can be calculated via the 
+  #' grad.poly procedure, in the case of coming up with proper weights when the combination
+  #' of expnms derives from a polynomial function (as in qgcomp.boot with degree>1).
+  #
+  #' @examples
+  #' vcov = rbind(c(1.2, .9),c(.9, 2.0))
+  #' colnames(vcov) <- rownames(vcov) <- expnms <- c("x1", "x2")
+  #' qgcomp:::se_comb(expnms, vcov, c(1, 0))^2 # returns the given variance
+  #' qgcomp:::se_comb(expnms, vcov, c(1, 1)) # default linear MSM fit: all exposures
+  #' # have equal weight
+  #' qgcomp:::se_comb(expnms, vcov, c(.3, .1)) # used when one exposure contributes
+  #'   # to the overall fit more than others  = d(msmeffect)/dx
+
+  if(!is.matrix(covmat)) {
+    nm <- names(covmat)
+    covmat = matrix(covmat)
+    colnames(covmat) <- nm
+  }
+  weightvec <- rep(0, dim(covmat)[1])
+  # eventual extension: allow non-zero 'weights' such that the intervention
+  # could correspond to 1 unit increases in some variables, and < 1 unit increases
+  # in others
+  if(is.null(grad)) weightvec[which(colnames(as.matrix(covmat)) %in% expnms)] <- 1
+  if(!is.null(grad)) weightvec[which(colnames(as.matrix(covmat)) %in% expnms)] <- grad
+  var <- weightvec %*% covmat %*% weightvec # delta method
+  #var <- sum(wcovmat)
+  sqrt(var)[1,,drop=TRUE] # should be a scalar
 }
+
+grad.poly <- function(intvals, degree){
+  # returns matrix with each column referring
+  if(degree==1){
+    mat <- matrix(1, nrow=length(intvals), ncol=1)
+  }else{
+    mat <- matrix(1, nrow=length(intvals), ncol=degree)
+    for(d in 2:degree){
+      mat[,d] <- d*poly(intvals, degree = d-1, simple = TRUE, raw = TRUE)[,d-1]
+    }
+  }
+  mat
+}
+
 
 quantize <- function (data, expnms, q=4, breaks=NULL) {
   #' @title create variables representing indicator functions with cutpoints defined
@@ -29,7 +81,7 @@ quantize <- function (data, expnms, q=4, breaks=NULL) {
   #' characterize the minimum value of each category for which to 
   #' break up the variables named in expnms. This is an alternative to using 'q'
   #' to define cutpoints.
-  #' @keywords variance, mixtures
+  #' @concept variance mixtures
   #' @import stats
   #' @export
   #' @examples
@@ -38,26 +90,35 @@ quantize <- function (data, expnms, q=4, breaks=NULL) {
   #' qdata = quantize(data=dat, expnms=c("x1", "x2"), q=4)
   #' table(qdata$data$x1)
   #' table(qdata$data$x2)
-  #' summary(dat[c('y', 'z')]);summary(qdata$data[c('y', 'z')]) # not touched
-    e = new.env()
-    e$retbr = list()
+  #' summary(dat[c("y", "z")]);summary(qdata$data[c("y", "z")]) # not touched
+  #' dat = data.frame(y=runif(100), x1=runif(100), x2=runif(100), z=runif(100))
+  #' # using 'breaks' requires specifying min and max (the qth quantile)
+  #' # example with theoretical quartiles (could be other relevant values)
+  #' qdata2 = quantize(data=dat, expnms=c("x1", "x2"), 
+  #'    breaks=list(c(-1e64, .25, .5, .75, 1e64), 
+  #'                c(-1e64, .25, .5, .75, 1e64)
+  #'                ))
+  #' table(qdata2$data$x1)
+  #' table(qdata2$data$x2)
+    e <- new.env()
+    e$retbr <- list()
     qt <- function(i){
       # not exported
         datmat <- as.numeric(unlist(data[, expnms[i]]))
-        if(is.null(breaks)){
-          br = unique(quantile(datmat, probs = seq(0, 1, by = 1 / q), na.rm = TRUE))
-          br[1] = -1e64
-          br[length(br)] = 1e64
-          e$retbr[[i]] <- br # todo: refactor to avoid <<-
-        } else{
-          # can supply breaks as a list
+        if(!is.null(breaks)){
+          # prioritize breaks if given by user
           br  <- breaks[[i]]
-          e$retbr[[i]] <<- breaks[[i]] # todo: refactor to avoid <<-
+          e$retbr[[i]] <- breaks[[i]]
+        }else{
+          br <- unique(quantile(datmat, probs = seq(0, 1, by = 1 / q), na.rm = TRUE))
+          br[1] <- -1e64
+          br[length(br)] <- 1e64
+          e$retbr[[i]] <- br 
         }
         cut(datmat, breaks = br, labels = FALSE,
              include.lowest = TRUE) - 1
     }
-    data[, expnms] = sapply(1:length(expnms), qt)
+    data[, expnms] <- sapply(1:length(expnms), qt)
     return(list(data=data, breaks=e$retbr))
 }
 
@@ -65,7 +126,7 @@ quantize <- function (data, expnms, q=4, breaks=NULL) {
 msm.fit <- function(f, qdata, intvals, expnms, rr=TRUE, main=TRUE, degree=1, id=NULL, ...){
   #' @title fitting marginal structural model (MSM) based on g-computation with
   #' quantized exposures
-  #' @description this is an internal function called by \code{\link[qgcomp]{qgcomp}},
+  #' @description This is an internal function called by \code{\link[qgcomp]{qgcomp}},
   #'  \code{\link[qgcomp]{qgcomp.boot}}, and \code{\link[qgcomp]{qgcomp.noboot}},
   #'  but is documented here for clarity. Generally, users will not need to call
   #'  this function directly.
@@ -100,7 +161,7 @@ msm.fit <- function(f, qdata, intvals, expnms, rr=TRUE, main=TRUE, degree=1, id=
   #' id/cluster)
   #' @param ... arguments to glm (e.g. family)
   #' @seealso \code{\link[qgcomp]{qgcomp.boot}}, and \code{\link[qgcomp]{qgcomp}}
-  #' @keywords variance, mixtures
+  #' @concept variance mixtures
   #' @import stats
   #' @examples
   #' set.seed(50)
@@ -112,9 +173,8 @@ msm.fit <- function(f, qdata, intvals, expnms, rr=TRUE, main=TRUE, degree=1, id=
   #' summary(mod$fit) # outcome regression model
   #' summary(mod$msmfit) # msm fit (variance not valid - must be obtained via bootstrap)
     if(is.null(id)) {
-      # not yet implemented
-      id = "id__"
-      qdata$id__ = 1:dim(qdata)[1]
+      id <- "id__"
+      qdata$id__ <- 1:dim(qdata)[1]
     }
     # conditional outcome regression fit
     fit <- glm(f, data = qdata[,!(names(qdata) %in% id)], ...)
@@ -122,7 +182,7 @@ msm.fit <- function(f, qdata, intvals, expnms, rr=TRUE, main=TRUE, degree=1, id=
     ### 
     # get predictions (set exposure to 0,1,...,q-1)
     if(is.null(intvals)){
-      intvals = (1:length(table(qdata[expnms[1]]))) - 1
+      intvals <- (1:length(table(qdata[expnms[1]]))) - 1
     }
     predit <- function(idx){
       newdata <- qdata
@@ -139,11 +199,11 @@ msm.fit <- function(f, qdata, intvals, expnms, rr=TRUE, main=TRUE, degree=1, id=
     # to do: allow functional form variations for the MSM via specifying the model formula
     if(!rr) suppressWarnings(msmfit <- glm(Ya ~ poly(psi, degree=degree, raw=TRUE), data=msmdat,...))
     if(rr)  suppressWarnings(msmfit <- glm(Ya ~ poly(psi, degree=degree, raw=TRUE), data=msmdat, family=binomial(link='log'), start=rep(-0.0001, degree+1)))
-    res = list(fit=fit, msmfit=msmfit)
+    res <- list(fit=fit, msmfit=msmfit)
     if(main) {
-      res$Ya = msmdat$Ya   # expected outcome under joint exposure, by gcomp
-      res$Yamsm = predict(msmfit, type='response')
-      res$A =  msmdat$psi # joint exposure (0 = all exposures set category with 
+      res$Ya <- msmdat$Ya   # expected outcome under joint exposure, by gcomp
+      res$Yamsm <- predict(msmfit, type='response')
+      res$A <- msmdat$psi # joint exposure (0 = all exposures set category with 
        # upper cut-point as first quantile)
     }
     res
@@ -189,7 +249,7 @@ qgcomp.noboot <- function(f, data, expnms=NULL, q=4, breaks=NULL, id=NULL, alpha
   #'  as information on the model fit (fit) and information on the 
   #'  weights/standardized coefficients in the positive (pweights) and 
   #'  negative (nweight) directions.
-  #' @keywords variance, mixtures
+  #' @concept variance mixtures
   #' @import stats
   #' @export
   #' @examples
@@ -213,9 +273,9 @@ qgcomp.noboot <- function(f, data, expnms=NULL, q=4, breaks=NULL, id=NULL, alpha
       id = "id__"
       qdata$id__ = 1:dim(qdata)[1]
     }
-    fit <- glm(f, data = qdata[,!(names(qdata) %in% id)], ...)
+    fit <- glm(f, data = qdata[,!(names(qdata) %in% id), drop=FALSE], ...)
     mod <- summary(fit)
-    estb <- sum(mod$coefficients[expnms,1])
+    estb <- sum(mod$coefficients[expnms,1, drop=TRUE])
     seb <- se_comb(expnms, covmat = mod$cov.scaled)
     tstat <- estb / seb
     df <- mod$df.null - length(expnms)
@@ -233,15 +293,15 @@ qgcomp.noboot <- function(f, data, expnms=NULL, q=4, breaks=NULL, id=NULL, alpha
     # similar to constrained gWQS
     pos.psi <- sum(wcoef[poscoef])
     neg.psi <- sum(wcoef[negcoef])
-    nmpos = names(pweights)
-    nmneg = names(nweights)
+    nmpos <- names(pweights)
+    nmneg <- names(nweights)
     se.pos.psi <- se_comb(nmpos, covmat = mod$cov.scaled)
     se.neg.psi <- se_comb(nmneg, covmat = mod$cov.scaled)
     qx <- qdata[, expnms]
     names(qx) <- paste0(names(qx), "_q")
     res <- list(
-      qx = qx, fit = fit, psi = estb, var.psi = seb ^ 2, ci = ci,
-      expnms=expnms, q=q, breaks=br, degree=1,
+      qx = qx, fit = fit, psi = estb, var.psi = seb ^ 2, covmat.psi = c('psi1' = seb^2), 
+      ci = ci, expnms=expnms, q=q, breaks=br, degree=1,
       pos.psi = pos.psi, neg.psi = neg.psi,
       pweights = sort(pweights, decreasing = TRUE),
       nweights = sort(nweights, decreasing = TRUE), 
@@ -250,20 +310,21 @@ qgcomp.noboot <- function(f, data, expnms=NULL, q=4, breaks=NULL, id=NULL, alpha
       bootstrap=FALSE
     )
       if(fit$family$family=='gaussian'){
-        res$tstat = tstat
-        res$df = df
-        res$pval = pval
+        res$tstat <- tstat
+        res$df <- df
+        res$pval <- pval
       }
       if(fit$family$family=='binomial'){
-        res$zstat = tstat
-        res$pval = pvalz
+        res$zstat <- tstat
+        res$pval <- pvalz
       }
     attr(res, "class") <- "qgcompfit"
     res
 }
 
-
-qgcomp.boot <- function(f, data, expnms=NULL, q=4, breaks=NULL, id=NULL, alpha=0.05, B=200, rr=TRUE, degree=1, seed=NULL, ...){
+#TODO: explain (log) better - here and in the noboot
+qgcomp.boot <- function(f, data, expnms=NULL, q=4, breaks=NULL, id=NULL, alpha=0.05, B=200, 
+                        rr=TRUE, degree=1, seed=NULL, ...){
   #' @title estimation of quantile g-computation fit, using bootstrap confidence intervals
   #'  
   #' @description This function yields population average effect estimates for 
@@ -308,7 +369,7 @@ qgcomp.boot <- function(f, data, expnms=NULL, q=4, breaks=NULL, id=NULL, alpha=0
   #'  as information on the model fit (fit) and information on the 
   #'  marginal structural model (msmfit) used to estimate the final effect
   #'  estimates.
-  #' @keywords variance, mixtures
+  #' @concept variance mixtures
   #' @import stats
   #' @export
   #' @examples
@@ -372,12 +433,23 @@ qgcomp.boot <- function(f, data, expnms=NULL, q=4, breaks=NULL, id=NULL, alpha=0
       cat("Including all model terms as exposures of interest")
       expnms <- attr(terms(f, data = data), "term.labels")
     }
+    if (!is.null(q) & !is.null(breaks)){
+      # if user specifies breaks, prioritize those
+      q <- NULL
+    }
     if (!is.null(q) | !is.null(breaks)){
       ql <- quantize(data, expnms, q, breaks)
       qdata <- ql$data
       br <- ql$breaks
-      intvals = (1:q)-1
+      if(is.null(q)){
+        # rare scenario with user specified breaks and q is left at NULL
+        nvals <- length(br[[1]])-1
+      } else{
+        nvals <- q
+      }
+      intvals <- (1:nvals)-1
     } else {
+      # if( is.null(breaks) & is.null(q)) # also includes NA
       qdata <- data
       # if no transformation is made (no quantiles, no breaks given)
       # then draw distribution values from quantiles of all the exposures
@@ -389,31 +461,37 @@ qgcomp.boot <- function(f, data, expnms=NULL, q=4, breaks=NULL, id=NULL, alpha=0
       br <- NULL
     }
     if(is.null(id)) {
-      id = "id__"
-      qdata$id__ = 1:dim(qdata)[1]
+      id <- "id__"
+      qdata$id__ <- 1:dim(qdata)[1]
     }
     ###
     msmfit <- msm.fit(f, qdata, intvals, expnms, rr, main=TRUE,degree=degree, id=id, ...)
     # main estimate  
     estb <- as.numeric(msmfit$msmfit$coefficients[-1])
     #bootstrap to get std. error
-    nobs = dim(qdata)[1]
-    nids = length(unique(qdata[,id]))
+    nobs <- dim(qdata)[1]
+    nids <- length(unique(qdata[,id, drop=TRUE]))
     psi.only <- function(i=1, f=f, qdata=qdata, intvals=intvals, expnms=expnms, rr=rr, degree=degree, nids=nids, id=id, ...){
-      bootids = data.frame(temp=sort(sample(unique(qdata[,id]), nids, replace = TRUE)))
+      bootids <- data.frame(temp=sort(sample(unique(qdata[,id, drop=TRUE]), nids, replace = TRUE)))
       names(bootids) <- id
-      qdata_ = merge(qdata,bootids, by=id, all.x=FALSE, all.y=TRUE)
+      qdata_ <- merge(qdata,bootids, by=id, all.x=FALSE, all.y=TRUE)
       as.numeric(
         msm.fit(f, qdata_, intvals, expnms, rr, main=FALSE, degree, id,
                 ...)$msmfit$coefficients[-1]
       )
     }
     set.seed(seed)
-    bootsamps = sapply(X=1:B, FUN=psi.only,f=f, qdata=qdata, intvals=intvals, 
+    bootsamps <- sapply(X=1:B, FUN=psi.only,f=f, qdata=qdata, intvals=intvals, 
                        expnms=expnms, rr=rr, degree=degree, nids=nids, id=id, ...)
     if(is.null(dim(bootsamps))) {
       seb <- sd(bootsamps)
-    }else seb <- apply(bootsamps, 1, sd)
+      covmat <- var(bootsamps)
+      names(covmat) <- 'psi1'
+    }else{
+      seb <- apply(bootsamps, 1, sd)
+      covmat <- cov(t(bootsamps))
+      colnames(covmat) <- rownames(covmat) <- paste0("psi", 1:nrow(bootsamps))
+    }
     tstat <- estb / seb
     df <- nobs - length(attr(terms(f, data = data), "term.labels")) - 1 - degree # df based on obs - gcomp terms - msm terms
     pval <- 2 - 2 * pt(abs(tstat), df = df)
@@ -424,7 +502,7 @@ qgcomp.boot <- function(f, data, expnms=NULL, q=4, breaks=NULL, id=NULL, alpha=0
     qx <- qdata[, expnms]
     res <- list(
       qx = qx, fit = msmfit$fit, msmfit = msmfit$msmfit, psi = estb, 
-      var.psi = seb ^ 2, ci = ci,
+      var.psi = seb ^ 2, covmat.psi=covmat, ci = ci,
       expnms=expnms, q=q, breaks=br, degree=degree,
       pos.psi = NULL, neg.psi = NULL, 
       pweights = NULL,nweights = NULL, psize = NULL,nsize = NULL, bootstrap=TRUE,
@@ -432,13 +510,13 @@ qgcomp.boot <- function(f, data, expnms=NULL, q=4, breaks=NULL, id=NULL, alpha=0
       bootsamps = bootsamps
     )
       if(msmfit$fit$family$family=='gaussian'){
-        res$tstat = tstat
-        res$df = df
-        res$pval = pval
+        res$tstat <- tstat
+        res$df <- df
+        res$pval <- pval
       }
       if(msmfit$fit$family$family=='binomial'){
-        res$zstat = tstat
-        res$pval = pvalz
+        res$zstat <- tstat
+        res$pval <- pvalz
       }
     attr(res, "class") <- "qgcompfit"
     res
@@ -469,7 +547,7 @@ qgcomp <- function(f,data=data,family=gaussian(),rr=TRUE,...){
   #'  as information on the model fit (fit) and possibly information on the 
   #'  marginal structural model (msmfit) used to estimate the final effect
   #'  estimates (qgcomp.boot only). If appropriate, weights are also reported.
-  #' @keywords variance, mixtures
+  #' @concept variance mixtures
   #' @import stats
   #' @export
   #' @examples
@@ -487,11 +565,13 @@ qgcomp <- function(f,data=data,family=gaussian(),rr=TRUE,...){
   #' # automatically selects appropriate method
   #' qgcomp(y ~ z + x1 + x2, expnms = c('x1', 'x2'), data=dat, q=2, family=binomial())
   #' qgcomp(y ~ z + x1 + x2, expnms = c('x1', 'x2'), data=dat, q=2, family=binomial(), rr=TRUE)
-  terms = attr(terms(f,data=data), 'term.labels')
-  doboot = ifelse(isTRUE(grep("I\\(", terms)>0), TRUE, FALSE)
+  terms <- attr(terms(f,data=data), 'term.labels')
+  doboot <- ifelse(isTRUE(grep("I\\(", terms)>0), TRUE, FALSE)
   if(rr | doboot){
-    res = qgcomp.boot(f=f,data=data,family=family,rr=rr,...)
-  }else res = qgcomp.noboot(f=f,data=data,family=family,...)
+    res <- qgcomp.boot(f=f,data=data,family=family,rr=rr,...)
+  }else{
+    res <- qgcomp.noboot(f=f,data=data,family=family,...)
+  }
   res
 }
 
@@ -510,7 +590,7 @@ print.qgcompfit <- function(x, ...){
   #' function
   #' @param ... unused
   #' @seealso \code{\link[qgcomp]{qgcomp.noboot}}, \code{\link[qgcomp]{qgcomp.boot}}, and \code{\link[qgcomp]{qgcomp}}
-  #' @keywords variance, mixtures
+  #' @concept variance mixtures
   #' @export
   #' @examples
   #' set.seed(50)
@@ -536,35 +616,35 @@ print.qgcompfit <- function(x, ...){
     cat("\n")
   }
   if (fam == "binomial"){
-    estimand = 'OR'
+    estimand <- 'OR'
     if(x$bootstrap && x$msmfit$family$link=='log') estimand = 'RR'
     cat(paste0("Mixture log(",estimand,")", ifelse(x$bootstrap, " (bootstrap CI)", " (Delta method CI)"), ":\n\n"))
     if(is.null(dim(x$ci))){
-      pdat = cbind(Estimate=x$psi, "Std. Error"=sqrt(x$var.psi), "Lower CI"=x$ci[1], "Upper CI"=x$ci[2], "Z value"=x$zstat, "Pr(>|z|)"=x$pval)
-      rownames(pdat) = paste0('psi',1:length(x$psi))
+      pdat <- cbind(Estimate=x$psi, "Std. Error"=sqrt(x$var.psi), "Lower CI"=x$ci[1], "Upper CI"=x$ci[2], "Z value"=x$zstat, "Pr(>|z|)"=x$pval)
+      rownames(pdat) <- paste0('psi',1:length(x$psi))
       printCoefmat(pdat,has.Pvalue=TRUE,tst.ind=5L,signif.stars=FALSE, cs.ind=1L:2)
     } else{
-      pdat = cbind(Estimate=x$psi, "Std. Error"=sqrt(x$var.psi), "Lower CI"=x$ci[,1], "Upper CI"=x$ci[,2], "Z value"=x$zstat, "Pr(>|z|)"=x$pval)
-      rownames(pdat) = paste0('psi',1:length(x$psi))
+      pdat <- cbind(Estimate=x$psi, "Std. Error"=sqrt(x$var.psi), "Lower CI"=x$ci[,1], "Upper CI"=x$ci[,2], "Z value"=x$zstat, "Pr(>|z|)"=x$pval)
+      rownames(pdat) <- paste0('psi',1:length(x$psi))
       printCoefmat(pdat,has.Pvalue=TRUE,tst.ind=5L,signif.stars=FALSE, cs.ind=1L:2)
     }
   }
-  if (fam == "gaussian"){
+  if (fam == "gaussian" | fam == "cox"){
     cat(paste0("Mixture slope parameters", ifelse(x$bootstrap, " (bootstrap CI)", " (Delta method CI)"), ":\n\n"))
     if(is.null(dim(x$ci))){
-      pdat = cbind(Estimate=x$psi, "Std. Error"=sqrt(x$var.psi), "Lower CI"=x$ci[1], "Upper CI"=x$ci[2], "t value"=x$tstat, "Pr(>|t|)"=x$pval)
-      rownames(pdat) = paste0('psi',1:length(x$psi))
+      pdat <- cbind(Estimate=x$psi, "Std. Error"=sqrt(x$var.psi), "Lower CI"=x$ci[1], "Upper CI"=x$ci[2], "t value"=x$tstat, "Pr(>|t|)"=x$pval)
+      rownames(pdat) <- paste0('psi',1:length(x$psi))
       printCoefmat(pdat,has.Pvalue=TRUE,tst.ind=5L,signif.stars=FALSE, cs.ind=1L:2)
     } else{
-      pdat = cbind(Estimate=x$psi, "Std. Error"=sqrt(x$var.psi), "Lower CI"=x$ci[,1], "Upper CI"=x$ci[,2], "t value"=x$tstat, "Pr(>|t|)"=x$pval)
-      rownames(pdat) = paste0('psi',1:length(x$psi))
+      pdat <- cbind(Estimate=x$psi, "Std. Error"=sqrt(x$var.psi), "Lower CI"=x$ci[,1], "Upper CI"=x$ci[,2], "t value"=x$tstat, "Pr(>|t|)"=x$pval)
+      rownames(pdat) <- paste0('psi',1:length(x$psi))
       printCoefmat(pdat,has.Pvalue=TRUE,tst.ind=5L,signif.stars=FALSE, cs.ind=1L:2)
     }
   }
 }
 
 
-plot.qgcompfit <- function(x, ...){
+plot.qgcompfit <- function(x, suppressprint=FALSE, ...){
   #' @title plot.qgcompfit: default plotting method for a qgcompfit object
   #'
   #' @description Plot a quantile g-computation object. For qgcomp.noboot, this function will
@@ -575,6 +655,9 @@ plot.qgcompfit <- function(x, ...){
   #' every exposure')
   #' 
   #' @param x "qgcompfit" object from `qgcomp.noboot` or  `qgcomp.boot` functions
+  #' @param suppressprint If TRUE, suppresses the plot, rather than printing it 
+  #'   by default (it can be saved as a ggplot2 object and used programmatically)
+  #'   (default = FALSE)
   #' @param ... unused
   #' @seealso \code{\link[qgcomp]{qgcomp.noboot}}, \code{\link[qgcomp]{qgcomp.boot}}, and \code{\link[qgcomp]{qgcomp}}
   #' @import ggplot2 grid gridExtra
@@ -606,7 +689,6 @@ plot.qgcompfit <- function(x, ...){
   #' # suggesting the non-linear MSM fits the data better and should be used
   #' # for inference about the effect of the exposure
   ymin <- ymax <- w <- v <- NULL # appease R CMD check
-
   theme_butterfly_l <- list(theme(
     legend.position = c(0,0), 
     legend.justification = c(0,0),
@@ -617,8 +699,6 @@ plot.qgcompfit <- function(x, ...){
     panel.grid.minor.x = element_blank(),
     panel.grid.minor.y = element_blank(),
     axis.line = element_line(colour = "black"), 
-    #axis.text = element_text(colour="black", face="bold", size=14, family="Helvetica"), 
-    #axis.title = element_text(size=16, face="bold", family="Helvetica"), 
     axis.text = element_text(colour="black", face="bold", size=14), 
     axis.title = element_text(size=16, face="bold"), 
     legend.key = element_blank(),
@@ -632,8 +712,6 @@ plot.qgcompfit <- function(x, ...){
     panel.grid.minor.x = element_blank(),
     panel.grid.minor.y = element_blank(),
     axis.line = element_line(colour = "black"), 
-    #axis.text.x = element_text(colour="black", face="bold", size=14, family="Helvetica"), 
-    #axis.title.x = element_text(size=16, face="bold", family="Helvetica"), 
     axis.text.x = element_text(colour="black", face="bold", size=14), 
     axis.title.x = element_text(size=16, face="bold"), 
     axis.ticks.y = element_blank(), 
@@ -648,11 +726,13 @@ plot.qgcompfit <- function(x, ...){
   #vpl <- grid::viewport(width=0.525, height=1, x=0, y=0, just=c("left", "bottom"))
   #vpr <- grid::viewport(width=0.475, height=1, x=0.525, y=0, just=c("left", "bottom"))
   if(!x$bootstrap){
+    poscolwt = 1-x$pos.psi/(x$pos.psi - x$neg.psi)
     if(length(x$pweights)==0) x$pweights = x$nweights*0
     if(length(x$nweights)==0) x$nweights = x$pweights*0
     pright <- ggplot() + 
     stat_identity(aes(x=v, y=w), position = "identity", geom="bar", 
-                  data=data.frame(w=x$pweights, v=names(x$pweights))) + 
+                  data=data.frame(w=x$pweights, v=names(x$pweights)),
+                  fill=gray(poscolwt)) + 
     scale_y_continuous(name="Positive weights", expand=c(0.000,0.000), breaks=c(0.25, 0.5, 0.75)) +
     scale_x_discrete(limits=nms, breaks=nms, labels=nms, drop=FALSE, position="top") +
     geom_hline(aes(yintercept=0)) + 
@@ -660,7 +740,8 @@ plot.qgcompfit <- function(x, ...){
     theme_butterfly_r
     pleft <- ggplot() + 
     stat_identity(aes(x=v, y=w), position = "identity", geom="bar", 
-                  data=data.frame(w=x$nweights, v=names(x$nweights))) + 
+                  data=data.frame(w=x$nweights, v=names(x$nweights)),
+                  fill=gray(1-poscolwt)) + 
     scale_y_reverse(name="Negative weights", expand=c(0.000,0.000), breaks=c(0.25, 0.5, 0.75)) +
     scale_x_discrete(name="Variable", limits=nms, breaks=nms, labels=nms, drop=FALSE) +
     geom_hline(aes(yintercept=0)) + 
@@ -670,48 +751,82 @@ plot.qgcompfit <- function(x, ...){
       maxstr = max(mapply(nchar, c(names(x$nweights), names(x$pweights))))
       lw = 1+maxstr/20
       p1 <- gridExtra::arrangeGrob(grobs=list(pleft, pright), ncol=2, padding=0.0, widths=c(lw,1))
-      grid::grid.newpage()
-      grid::grid.draw(p1)
+      if(!suppressprint) {
+        grid::grid.newpage()
+        grid::grid.draw(p1)
+      }
+      if(suppressprint) return(p1)
     }
   }
   if(x$bootstrap){
-   # default plot for bootstrap results (no weights obtained)
+       # variance based on delta method and knowledge that non-linear
+       #functions will always be polynomials in qgcomp
+
+
+       # default plot for bootstrap results (no weights obtained)
    p <- ggplot() 
-     if(x$msmfit$family$family=='gaussian' & x$degree==1){
-       #prediction interval (large sample estimator under normal assumption)
-       resvar = summary(x$fit)$dispersion
-       psivar = x$var.psi
+     if(x$msmfit$family$family=='gaussian'){
+       #confidence band
        y = x$y.expectedmsm
-       yup = y + qnorm(.975)*sqrt(resvar+psivar)
-       ydo = y + qnorm(.025)*sqrt(resvar+psivar)
+       COV = x$covmat.psi
+       intvals = as.numeric(names(table(x$index)))
+       grad = grad.poly(intvals, x$degree)
+       py = tapply(x$y.expectedmsm, x$index, mean)
+       varpy = 0*py
+       for(i in 1:length(intvals)){
+         varpy[i] = se_comb(expnms = paste0('psi', 1:x$degree), 
+                        covmat=COV, grad = grad[i,])
+       }
+       pyup = py + qnorm(.975)*sqrt(varpy)
+       pydo = py + qnorm(.025)*sqrt(varpy)
        p <- p + geom_ribbon(aes(x=x,ymin=ymin,ymax=ymax, 
-                                fill="Model prediction interval"),
-                            data=data.frame(ymin=ydo, ymax=yup, x=x$index)) +
+                                fill="Model confidence band"),
+                            data=data.frame(ymin=pydo, ymax=pyup, x=intvals/max(intvals))) +
                     geom_line(aes(x=x,y=y, color="Model fit"),
-                            data=data.frame(y=y, x=x$index))
+                            data=data.frame(y=y, x=x$index/max(x$index)))
      }
-     if(x$msmfit$family$family=='binomial' & x$degree==1){
-       y = x$y.expectedmsm
-       p <- p + geom_line(aes(x=x,y=y, color="Model fit"),
-                            data=data.frame(y=y, x=x$index)) 
-     }
-     if(x$degree>1){
-       #prediction interval (large sample estimator under normal assumption)
-       y = x$y.expectedmsm
-       p <- p + geom_line(aes(x=x,y=y, color="Model fit"),
-                            data=data.frame(y=y, x=x$index)) 
+     if(x$msmfit$family$family=='binomial'){
+       y = x$y.expectedmsm # probabilities (not on model scale)
+       #variance/gradient on model scales
+       COV = x$covmat.psi
+       intvals = as.numeric(names(table(x$index)))
+       grad = grad.poly(intvals, x$degree)
+       py = tapply(x$y.expectedmsm, x$index, mean)
+       varpy = 0*py   
+       for(i in 1:length(intvals)){
+         varpy[i] = se_comb(expnms = paste0('psi', 1:x$degree), 
+                        covmat=COV, grad = grad[i,])
+       }
+
+       if(x$msmfit$family$link=='log'){
+         pyup = pmin(exp(log(py) + qnorm(.975)*sqrt(varpy)), 1)
+         pydo = pmax(exp(log(py) + qnorm(.025)*sqrt(varpy)), 0)       
+         #pyup = exp(log(py) + qnorm(.975)*sqrt(varpy))
+         #pydo = exp(log(py) + qnorm(.025)*sqrt(varpy))
+       }
+       if(x$msmfit$family$link=='logit'){
+         pyup = 1/(1+exp(-(log(py/(1-py)) + qnorm(.975)*sqrt(varpy))))
+         pydo = 1/(1+exp(-(log(py/(1-py)) + qnorm(.025)*sqrt(varpy))))      
+       }
+
+       p <- p + geom_ribbon(aes(x=x,ymin=ymin,ymax=ymax, 
+                                fill="Model confidence band"),
+                            data=data.frame(ymin=pydo, ymax=pyup, x=intvals/max(intvals))) +
+                    geom_line(aes(x=x,y=y, color="Model fit"),
+                            data=data.frame(y=y, x=x$index/max(x$index)))
      }
      p <- p + geom_smooth(aes(x=x,y=y, color="Smooth fit"),
-                          data=data.frame(y=x$y.expected, x=x$index), 
+                          data=data.frame(y=x$y.expected, x=x$index/max(x$index)), 
                           method = 'gam', 
                           formula=y~s(x, k=4,fx=TRUE), se = FALSE) + 
      scale_x_continuous(name=("Joint exposure quantile")) + 
      scale_y_continuous(name="E(outcome)") + 
-     scale_fill_discrete(name="") + 
-     scale_colour_grey(name="") + 
+     scale_fill_grey(name="", start=.9) + 
+     scale_colour_grey(name="", start=0.0, end=0.6) + 
      theme_classic()
-   print(p)
+     if(!suppressprint) print(p)
   }
+  if(suppressprint) return(p)
   #grid.text("Density", x=0.55, y=0.1, gp=gpar(fontsize=14, fontface="bold", fontfamily="Helvetica"))
 }
 
@@ -735,6 +850,7 @@ predict.qgcompfit <- function(object, expnms=NULL, newdata=NULL, type="response"
   #' returns a matrix giving the fitted values of each term in the model formula 
   #' on the linear predictor scale.
   #' @param ... arguments to predict.glm
+  #' @import grDevices
   #' @export
   #' @examples
   #' set.seed(50)
@@ -746,11 +862,11 @@ predict.qgcompfit <- function(object, expnms=NULL, newdata=NULL, type="response"
   #' summary(predict(obj1, expnms = c('x1', 'x2'), newdata=dat2))
   #' summary(predict(obj2, expnms = c('x1', 'x2'), newdata=dat2))
  if(is.null(newdata)){
-   pred = predict(object$fit, type=type, ...) 
+   pred <- predict(object$fit, type=type, ...) 
   }
  if(!is.null(newdata)){
    newqdata <- quantize(newdata, expnms, q=NULL, object$breaks)$data
-   pred = predict(object$fit, newdata=newqdata, type=type, ...) 
+   pred <- predict(object$fit, newdata=newqdata, type=type, ...) 
  }
   return(pred)
 }
@@ -783,10 +899,10 @@ msm.predict <- function(object, newdata=NULL){
   #' summary(msm.predict(obj, newdata=dat2))
  if(!object$bootstrap) stop("only valid for results from qgcomp.boot function")
  if(is.null(newdata)){
-   pred = predict(object$msmfit, type='response') 
+   pred <- predict(object$msmfit, type='response') 
   }
  if(!is.null(newdata)){
-   pred = predict(object$msmfit, newdata=newdata, type='response') 
+   pred <- predict(object$msmfit, newdata=newdata, type='response') 
  }
   return(pred)
 }
