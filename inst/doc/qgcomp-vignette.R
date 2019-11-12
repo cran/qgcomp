@@ -1,6 +1,7 @@
 ## ---- echo=TRUE, results='markup', message=FALSE-------------------------
-library(qgcomp)
-library(knitr)
+library("qgcomp")
+library("knitr")
+library("ggplot2")
 data("metals", package="qgcomp")
 head(metals)
 
@@ -98,7 +99,8 @@ plot(qcboot.fit4)
 
 qcboot.fit5 <- qgcomp(y~. + .^2,
                          expnms=Xnm,
-                         metals[,c(Xnm, 'y')], family=gaussian(), q=4, degree=2, B=10, seed=125)
+                         metals[,c(Xnm, 'y')], family=gaussian(), q=4, degree=2, 
+                      B=10, rr=FALSE, seed=125)
 plot(qcboot.fit5)
 
 ## ---- results='markup', fig.show='hold', fig.height=3, fig.width=7.5, cache=FALSE----
@@ -126,14 +128,52 @@ qc.fit6nonhom <- qgcomp.boot(y ~ bs(iron)*bs(lead) + bs(iron)*bs(cadmium) + bs(l
                          selenium + silver + sodium + zinc,
                          expnms=newXnm,
                          metals, family=gaussian(), q=8, B=10, degree=3)
-# it helps to place the plots on a common y-axis, which is easy due to dependence of the qgcomp plotting functions on ggplot
+# it helps to place the plots on a common y-axis, which is easy due 
+#  to dependence of the qgcomp plotting functions on ggplot
 pl.fit6lin <- plot(qc.fit6lin, suppressprint = TRUE)
 pl.fit6nonlin <- plot(qc.fit6nonlin, suppressprint = TRUE)
 pl.fit6nonhom <- plot(qc.fit6nonhom, suppressprint = TRUE)
 
-pl.fit6lin + coord_cartesian(ylim=c(-0.75, .75)) + ggtitle("Linear fit: mixture of iron, lead, and cadmium")
-pl.fit6nonlin + coord_cartesian(ylim=c(-0.75, .75)) + ggtitle("Linear fit: mixture of iron, lead, and cadmium")
-pl.fit6nonhom + coord_cartesian(ylim=c(-0.75, .75)) + ggtitle("Non-linear, non-homogeneous fit: mixture of iron, lead, and cadmium")
+pl.fit6lin + coord_cartesian(ylim=c(-0.75, .75)) + 
+  ggtitle("Linear fit: mixture of iron, lead, and cadmium")
+pl.fit6nonlin + coord_cartesian(ylim=c(-0.75, .75)) + 
+  ggtitle("Linear fit: mixture of iron, lead, and cadmium")
+pl.fit6nonhom + coord_cartesian(ylim=c(-0.75, .75)) + 
+  ggtitle("Non-linear, non-homogeneous fit: mixture of iron, lead, and cadmium")
+
+## ---- results='markup', fig.show='hold', fig.height=3, fig.width=7.5, cache=FALSE----
+
+# using indicator terms for each quantile
+qc.fit7a <- qgcomp.boot(y ~ factor(iron) + lead + cadmium + 
+                         mage35 + arsenic + magnesium + manganese + mercury + 
+                         selenium + silver + sodium + zinc,
+                         expnms=newXnm,
+                         metals, family=gaussian(), q=8, B=10, deg=2)
+# underlying fit
+summary(qc.fit7a$fit)$coefficients
+plot(qc.fit7a)
+
+# interactions between indicator terms
+qc.fit7b <- qgcomp.boot(y ~ factor(iron)*factor(lead) + cadmium + 
+                         mage35 + arsenic + magnesium + manganese + mercury + 
+                         selenium + silver + sodium + zinc,
+                         expnms=newXnm,
+                         metals, family=gaussian(), q=8, B=10, deg=3)
+# underlying fit
+#summary(qc.fit7b$fit)$coefficients
+plot(qc.fit7b)
+
+# breaks at specific quantiles (these breaks act on the quantized basis)
+qc.fit7c <- qgcomp.boot(y ~ I(iron>3)*I(lead>3) + cadmium + 
+                         mage35 + arsenic + magnesium + manganese + mercury + 
+                         selenium + silver + sodium + zinc,
+                         expnms=newXnm,
+                         metals, family=gaussian(), q=8, B=10, deg=2)
+# underlying fit
+summary(qc.fit7b$fit)$coefficients
+plot(qc.fit7c)
+
+
 
 ## ---- results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
 AIC(qc.fit6lin$fit)
@@ -143,4 +183,47 @@ AIC(qc.fit6nonhom$fit)
 BIC(qc.fit6lin$fit)
 BIC(qc.fit6nonlin$fit)
 BIC(qc.fit6nonhom$fit)
+
+## ---- results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
+# non-bootstrapped version estimates a marginal structural model for the 
+# confounder-conditional effect
+survival::coxph(survival::Surv(disease_time, disease_state) ~ iron + lead + cadmium + 
+                         arsenic + magnesium + manganese + mercury + 
+                         selenium + silver + sodium + zinc +
+                         mage35,
+                         data=metals)
+qc.survfit1 <- qgcomp.cox.noboot(survival::Surv(disease_time, disease_state) ~ .,expnms=Xnm,
+                         data=metals[,c(Xnm, 'disease_time', 'disease_state')], q=4)
+qc.survfit1
+plot(qc.survfit1)
+
+# bootstrapped version estimates a marginal structural model for the population average effect
+#library(survival)
+qc.survfit2 <- qgcomp.cox.boot(Surv(disease_time, disease_state) ~ .,expnms=Xnm,
+                         data=metals[,c(Xnm, 'disease_time', 'disease_state')], q=4, 
+                         B=10, MCsize=1000, parallel=TRUE)
+qc.survfit2
+p2 = plot(qc.survfit2, suppressprint = TRUE)  
+p2 + labs(title="Linear log(hazard ratio), overall and exposure specific")
+
+qc.survfit3 <- qgcomp.cox.boot(Surv(disease_time, disease_state) ~ . + .^2,expnms=Xnm,
+                         data=metals[,c(Xnm, 'disease_time', 'disease_state')], q=4, 
+                         B=10, MCsize=1000, parallel=TRUE)
+qc.survfit3
+p3 = plot(qc.survfit3, suppressprint = TRUE) 
+p3 + labs(title="Non-linear log(hazard ratio), exposure specific")
+
+qc.survfit4 <- qgcomp.cox.boot(Surv(disease_time, disease_state) ~ . + .^2,expnms=Xnm,
+                         data=metals[,c(Xnm, 'disease_time', 'disease_state')], q=4, 
+                         B=10, MCsize=1000, parallel=TRUE, degree=2)
+qc.survfit4
+# examining the overall hazard ratio as a function of overall exposure
+hrs_q = exp(matrix(c(0,0,1,1,2,4,3,9), ncol=2, byrow=TRUE)%*%qc.survfit4$msmfit$coefficients)
+colnames(hrs_q) = "Hazard ratio"
+print("Hazard ratios by quartiles (min-25%,25-50%, 50-75%, 75%-max)")
+hrs_q
+
+p4 = plot(qc.survfit4, suppressprint = TRUE) 
+p4 + labs(title="Non-linear log(hazard ratio), overall and exposure specific") 
+
 
