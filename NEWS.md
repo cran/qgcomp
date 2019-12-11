@@ -1,3 +1,15 @@
+# qgcomp v1.3.0
+## Major changes
+- Documentation improvements
+- Improved error messages
+- Added intercept to main output (this may break some code that depends on qgcomp)
+- Added pointwise confidence bounds and better control over plot output for `qgcomp.boot` fits.
+
+## Bug fixes
+- Fixed fatal error for plotting output of `qgcomp.cox.boot` when model was adjusted for covariates
+- Fixed variable typing issue that arose when fitting `qgcomp.boot` with a single exposure variable with non-linear fit
+
+
 # qgcomp v1.2.0
 ## Major changes
 - Added bootstrapped version of Cox proportional hazards model, which estimates parameters of a **marginal structural Cox model** that uses a simulation-based approach to characterize the population average effect of increasing all exposures of interest by one quantile. Survival analysis now available from `qgcomp.cox.boot` and `qgcomp.cox.noboot` functions.
