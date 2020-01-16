@@ -4,8 +4,16 @@
 \alias{qgcomp.cox.noboot}
 \title{estimation of quantile g-computation fit for a survival outcome}
 \usage{
-qgcomp.cox.noboot(f, data, expnms = NULL, q = 4, breaks = NULL,
-  id = NULL, alpha = 0.05, ...)
+qgcomp.cox.noboot(
+  f,
+  data,
+  expnms = NULL,
+  q = 4,
+  breaks = NULL,
+  id = NULL,
+  alpha = 0.05,
+  ...
+)
 }
 \arguments{
 \item{f}{R style formula}
@@ -63,8 +71,10 @@ expnms=paste0("x", 1:2)
 f = survival::Surv(time, d)~x1 + x2
 (fit1 <- survival::coxph(f, data = dat))
 (obj <- qgcomp.cox.noboot(f, expnms = expnms, data = dat))
+\donttest{
 # not run: bootstrapped version is much slower
-#(obj2 <- qgcomp.cox.boot(f, expnms = expnms, data = dat, B=200, MCsize=20000))
+(obj2 <- qgcomp.cox.boot(f, expnms = expnms, data = dat, B=200, MCsize=20000))
+}
 }
 \seealso{
 \code{\link[qgcomp]{qgcomp.cox.boot}}, \code{\link[qgcomp]{qgcomp.boot}}, 

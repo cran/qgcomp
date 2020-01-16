@@ -1,4 +1,4 @@
-## ----metals data, echo=TRUE, results='markup', message=FALSE-------------
+## ----metals data, echo=TRUE, results='markup', message=FALSE------------------
 library("qgcomp")
 library("knitr")
 library("ggplot2")

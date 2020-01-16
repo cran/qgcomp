@@ -1,3 +1,12 @@
+# qgcomp v2.0.0
+## Major changes
+- Documentation improvements
+- Added `qgcomp.zi.boot` function to fit (linear/additive only) versions of quantile g-computation for zero-inflated Poisson or negative binomial models (adds additional dependency on `pscl` package)
+- Major version change to account for possible breaking of old code in v.1.3.0
+
+## Bug fixes
+- MAJOR: Fixed error in print function that printed incorrect confidence intervals introduced in v1.3.0
+
 # qgcomp v1.3.0
 ## Major changes
 - Documentation improvements
