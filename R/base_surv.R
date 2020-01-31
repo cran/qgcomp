@@ -4,8 +4,7 @@
 
 coxmsm.fit <- function(
   f, qdata, intvals, expnms, main=TRUE, degree=1, id=NULL, MCsize=10000, ...){
-  #' @title estimating the parameters of a marginal structural model (MSM) based on 
-  #' g-computation with quantized exposures
+  #' @title marginal structural Cox model (MSM) fitting within quantile g-computation
   #' @description this is an internal function called by \code{\link[qgcomp]{qgcomp.cox.noboot}},
   #'  \code{\link[qgcomp]{qgcomp.cox.boot}}, and \code{\link[qgcomp]{qgcomp.cox.noboot}},
   #'  but is documented here for clarity. Generally, users will not need to call
@@ -32,7 +31,7 @@ coxmsm.fit <- function(
   #' the exposures of interest (main terms only!)
   #' @param main logical, internal use: produce estimates of exposure effect (psi)
   #'  and expected outcomes under g-computation and the MSM
-  #' @param degree polynomial basis function for marginal model (e.g. degree = 2
+  #' @param degree polynomial bases for marginal model (e.g. degree = 2
   #'  allows that the relationship between the whole exposure mixture and the outcome
   #'  is quadratic. Default=1)
   #' @param id (optional) NULL, or variable name indexing individual units of 
@@ -134,7 +133,7 @@ coxmsm.fit <- function(
 
 qgcomp.cox.noboot <- function (f, data, expnms = NULL, q = 4, breaks = NULL,
                                id=NULL, alpha=0.05,...) {
-  #' @title estimation of quantile g-computation fit for a survival outcome
+  #' @title quantile g-computation for survival outcomes under linearity/additivity
   #'  
   #'
   #' @description This function performs quantile g-computation in a survival
@@ -171,8 +170,8 @@ qgcomp.cox.noboot <- function (f, data, expnms = NULL, q = 4, breaks = NULL,
   #' @return a qgcompfit object, which contains information about the effect
   #'  measure of interest (psi) and associated variance (var.psi), as well
   #'  as information on the model fit (fit) and information on the 
-  #'  weights/standardized coefficients in the positive (pweights) and 
-  #'  negative (nweight) directions.
+  #'  weights/standardized coefficients in the positive (pos.weights) and 
+  #'  negative (neg.weights) directions.
   #' @concept variance mixtures
   #' @import survival
   #' @export
@@ -222,24 +221,25 @@ qgcomp.cox.noboot <- function (f, data, expnms = NULL, q = 4, breaks = NULL,
   names(wcoef) <- gsub("_q", "", names(wcoef))
   poscoef <- which(wcoef > 0)
   negcoef <- which(wcoef <= 0)
-  pweights <- abs(wcoef[poscoef])/sum(abs(wcoef[poscoef]))
-  nweights <- abs(wcoef[negcoef])/sum(abs(wcoef[negcoef]))
+  pos.weights <- abs(wcoef[poscoef])/sum(abs(wcoef[poscoef]))
+  neg.weights <- abs(wcoef[negcoef])/sum(abs(wcoef[negcoef]))
   pos.psi <- sum(wcoef[poscoef])
   neg.psi <- sum(wcoef[negcoef])
-  #nmpos = names(pweights)
-  #nmneg = names(nweights)
+  #nmpos = names(pos.weights)
+  #nmneg = names(neg.weights)
   #se.pos.psi <- se_comb(nmpos, covmat = covMat)
   #se.neg.psi <- se_comb(nmneg, covmat = covMat)
   qx <- qdata[, expnms]
   names(qx) <- paste0(names(qx), "_q")
+  names(estb) = "psi1"
   res <- list(qx = qx, fit = fit, 
               psi = estb, var.psi = seb^2, covmat.psi = seb^2, ci = ci, 
               coef = estb, var.coef = seb^2, covmat.coef = seb^2, ci.coef = ci, 
               expnms = expnms, q = q, breaks = br, degree = 1, 
               pos.psi = pos.psi, neg.psi = neg.psi, 
-              pweights = sort(pweights, decreasing = TRUE), 
-              nweights = sort(nweights, decreasing = TRUE), 
-              psize = sum(abs(wcoef[poscoef])), nsize = sum(abs(wcoef[negcoef])), 
+              pos.weights = sort(pos.weights, decreasing = TRUE), 
+              neg.weights = sort(neg.weights, decreasing = TRUE), 
+              pos.size = sum(abs(wcoef[poscoef])), neg.size = sum(abs(wcoef[negcoef])), 
               bootstrap = FALSE, zstat = tstat, pval = pvalz)
   attr(res, "class") <- "qgcompfit"
   res
@@ -248,7 +248,7 @@ qgcomp.cox.noboot <- function (f, data, expnms = NULL, q = 4, breaks = NULL,
 qgcomp.cox.boot <- function(f, data, expnms=NULL, q=4, breaks=NULL, 
                                        id=NULL, alpha=0.05, B=200, MCsize=10000, degree=1, 
                                        seed=NULL, parallel=FALSE, ...){# bayes=FALSE,rr=TRUE, 
-  #' @title estimation of quantile g-computation fit for a survival outcome
+  #' @title quantile g-computation for survival outcomes
   #'  
   #' @description This function yields population average effect estimates for 
   #'   (possibly right censored) time-to event outcomes
@@ -257,7 +257,7 @@ qgcomp.cox.boot <- function(f, data, expnms=NULL, q=4, breaks=NULL,
   #'  log(hazard ratio) per quantile increase in the joint exposure to all exposures 
   #'  in `expnms'. This function uses g-computation to estimate the parameters of a
   #'  marginal structural model for the population average effect of increasing all
-  #'  expsoures in `expnms' by a single quantile. This approach involves specifying 
+  #'  exposures in `expnms' by a single quantile. This approach involves specifying 
   #'  an underlying conditional outcome model, given all exposures of interest (possibly
   #'  with non-linear basis function representations such as splines or product terms)
   #'  and confounders or covariates of interest. This model is fit first, which is used
@@ -274,7 +274,7 @@ qgcomp.cox.boot <- function(f, data, expnms=NULL, q=4, breaks=NULL,
   #'  
   #'  MCSize is crucial to get accurate point estimates. In order to get marginal
   #'  estimates of the population hazard under different values of the joint exposure
-  #'  at a given quantile for all exposures in `expnmns`, `qgcomp.cox.boot` uses
+  #'  at a given quantile for all exposures in `expnms`, `qgcomp.cox.boot` uses
   #'  Monte Carlo simulation to generate outcomes implied by the underlying conditional model
   #'  and then fit a separate (marginal structural) model to those outcomes. In order to get
   #'  accurate results that don't vary much from run-to-run of this approach, MCsize
@@ -282,7 +282,7 @@ qgcomp.cox.boot <- function(f, data, expnms=NULL, q=4, breaks=NULL,
   #'  precision (e.g. 2 significant digits). 
   #'
   #' @param f R style survival formula, which includes \code{\link[survival]{Surv}}
-  #'   in the outcome defintion. E.g. \code{Surv(time,event) ~ exposure}
+  #'   in the outcome definition. E.g. \code{Surv(time,event) ~ exposure}
   #' @param data data frame
   #' @param expnms character vector of exposures of interest
   #' @param q NULL or number of quantiles used to create quantile indicator variables
@@ -297,13 +297,13 @@ qgcomp.cox.boot <- function(f, data, expnms=NULL, q=4, breaks=NULL,
   #' @param alpha alpha level for confidence limit calculation
   #' @param B integer: number of bootstrap iterations (this should typically be
   #' >=200, though it is set lower in examples to improve run-time).
-  #' @param degree polynomial basis function for marginal model (e.g. degree = 2
+  #' @param degree polynomial bases for marginal model (e.g. degree = 2
   #'  allows that the relationship between the whole exposure mixture and the outcome
   #'  is quadratic.
   #' @param MCsize integer: sample size for simulation to approximate marginal 
   #'  hazards ratios (if < sample size, then set to sample size). Note that large
   #'  values will slow down the fitting, but will result in higher accuracy - if you 
-  #'  run the function multiple times you will see that results vary due to simuation
+  #'  run the function multiple times you will see that results vary due to simulation
   #'  error. Ideally, MCsize would be set such that simulation error is negligible
   #'  in the precision reported (e.g. if you report results to 2 decimal places, then
   #'  MCsize should be set high enough that you consistenty get answers that are the same
@@ -394,9 +394,9 @@ qgcomp.cox.boot <- function(f, data, expnms=NULL, q=4, breaks=NULL,
   starttime = Sys.time()
   psi.only <- function(i=1, f=f, qdata=qdata, intvals=intvals, expnms=expnms, degree=degree, 
                        nids=nids, id=id, ...){
-    if(i==2){
+    if(i==2 & !parallel){
       timeiter = as.numeric(Sys.time() - starttime)
-      if((timeiter*B/60)>0.5) cat(paste0("Expected time to finish: ", round(B*timeiter/60, 2), " minutes \n"))
+      if((timeiter*B/60)>0.5) message(paste0("Expected time to finish: ", round(B*timeiter/60, 2), " minutes \n"))
     }
     bootids <- data.frame(temp=sort(sample(unique(qdata[,id, drop=TRUE]), nids, replace = TRUE)))
     names(bootids) <- id
@@ -424,7 +424,7 @@ qgcomp.cox.boot <- function(f, data, expnms=NULL, q=4, breaks=NULL,
   }else{
     seb <- apply(bootsamps, 1, sd)
     covmat <- cov(t(bootsamps))
-    colnames(covmat) <- rownames(covmat) <- paste0("psi", 1:nrow(bootsamps))
+    colnames(covmat) <- rownames(covmat) <- names(estb) <- paste0("psi", 1:nrow(bootsamps))
   }
   tstat <- estb / seb
   pvalz <- 2 - 2 * pnorm(abs(tstat))
@@ -438,7 +438,7 @@ qgcomp.cox.boot <- function(f, data, expnms=NULL, q=4, breaks=NULL,
     coef = estb, var.coef = seb ^ 2, covmat.coef=covmat, ci.coef = ci, 
     expnms=expnms, q=q, breaks=br, degree=degree,
     pos.psi = NULL, neg.psi = NULL, 
-    pweights = NULL,nweights = NULL, psize = NULL,nsize = NULL, bootstrap=TRUE,
+    pos.weights = NULL,neg.weights = NULL, pos.size = NULL,neg.size = NULL, bootstrap=TRUE,
     y.expected=msmfit$Ya, y.expectedmsm=msmfit$Yamsm, index=msmfit$A,
     bootsamps = bootsamps
   )

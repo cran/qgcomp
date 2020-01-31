@@ -84,9 +84,12 @@ qcboot.fit3 <- qgcomp.boot(y ~ mage35 + arsenic + barium + cadmium + calcium + c
                          expnms=Xnm,
                          metals, family=gaussian(), q=4, B=10,# B should be 200-500+ in practice
                          seed=125)
-qc.fit3
-plot(qcboot.fit3)
+qcboot.fit3
+p = plot(qcboot.fit3)
 plot(qcboot.fit3, pointwiseref = 3)
+
+pointwisebound.boot(qcboot.fit3, pointwiseref=3)
+qgcomp:::modelbound.boot(qcboot.fit3)
 
 
 ## ----non-linear non-hom intro, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
@@ -102,6 +105,8 @@ qcboot.fit5 <- qgcomp(y~. + .^2,
                          expnms=Xnm,
                          metals[,c(Xnm, 'y')], family=gaussian(), q=4, degree=2, 
                       B=10, rr=FALSE, seed=125)
+qgcomp::pointwisebound.boot(qcboot.fit5)
+qgcomp:::modelbound.boot(qcboot.fit5)
 plot(qcboot.fit5)
 
 ## ----graphical non-linearity, results='markup', fig.show='hold', fig.height=3, fig.width=7.5, cache=FALSE----
@@ -159,7 +164,7 @@ qc.fit7a <- qgcomp.boot(y ~ factor(iron) + lead + cadmium +
                          mage35 + arsenic + magnesium + manganese + mercury + 
                          selenium + silver + sodium + zinc,
                          expnms=newXnm,
-                         metals, family=gaussian(), q=8, B=10, deg=2)
+                         metals, family=gaussian(), q=8, B=20, deg=2)
 # underlying fit
 summary(qc.fit7a$fit)$coefficients
 plot(qc.fit7a)
@@ -175,13 +180,13 @@ qc.fit7b <- qgcomp.boot(y ~ factor(iron)*factor(lead) + cadmium +
 plot(qc.fit7b)
 
 # breaks at specific quantiles (these breaks act on the quantized basis)
-qc.fit7c <- qgcomp.boot(y ~ I(iron>3)*I(lead>3) + cadmium + 
+qc.fit7c <- qgcomp.boot(y ~ I(iron>4)*I(lead>4) + cadmium + 
                          mage35 + arsenic + magnesium + manganese + mercury + 
                          selenium + silver + sodium + zinc,
                          expnms=newXnm,
                          metals, family=gaussian(), q=8, B=10, deg=2)
 # underlying fit
-summary(qc.fit7b$fit)$coefficients
+summary(qc.fit7c$fit)$coefficients
 plot(qc.fit7c)
 
 

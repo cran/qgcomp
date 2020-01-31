@@ -2,7 +2,7 @@
 % Please edit documentation in R/base.R
 \name{qgcomp}
 \alias{qgcomp}
-\title{estimation of quantile g-computation fit}
+\title{quantile g-computation for continuous, binary, and censored survival outcomes}
 \usage{
 qgcomp(f, data = data, family = gaussian(), rr = TRUE, ...)
 }
@@ -43,7 +43,7 @@ This function automatically selects between qgcomp.noboot, qgcomp.boot,
  terms or requesting the risk ratio for binomial outcomes will result in the `qgcomp.boot`
  function being called. For a given linear model, boot and noboot versions will give identical
  inference, though when using survival outcomes, the `boot` version uses simulation based 
- inference, which can vary from the `nonboot` version due to simulation error (which can 
+ inference, which can vary from the `noboot` version due to simulation error (which can 
  be minimized via setting the MCsize parameter very large - see 
  \code{\link[qgcomp]{qgcomp.cox.boot}} for details).
 }
@@ -55,14 +55,18 @@ qgcomp.boot(y ~ z + x1 + x2, expnms = c('x1', 'x2'), data=dat, q=2, B=10, seed=1
 # automatically selects appropriate method
 qgcomp(y ~ z + x1 + x2, expnms = c('x1', 'x2'), data=dat, q=2)
 # note for binary outcome this will 
-dat <- data.frame(y=rbinom(50, 1, 0.5), x1=runif(50), x2=runif(50), z=runif(50))
+dat <- data.frame(y=rbinom(100, 1, 0.5), x1=runif(100), x2=runif(100), z=runif(100))
+\donttest{
 qgcomp.noboot(y ~ z + x1 + x2, expnms = c('x1', 'x2'), data=dat, q=2, family=binomial())
 qgcomp.boot(y ~ z + x1 + x2, expnms = c('x1', 'x2'), data=dat, q=2, B=10, seed=125, 
   family=binomial())
+  
 # automatically selects appropriate method
 qgcomp(y ~ z + x1 + x2, expnms = c('x1', 'x2'), data=dat, q=2, family=binomial())
 qgcomp(y ~ z + x1 + x2, expnms = c('x1', 'x2'), data=dat, q=2, family=binomial(), rr=TRUE)
-
+qgcomp(y ~ z + factor(x1) + factor(x2), degree=2, expnms = c('x1', 'x2'), data=dat, q=4, 
+family=binomial())
+}
 #survival objects
 set.seed(50)
 N=200

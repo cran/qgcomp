@@ -2,7 +2,7 @@
 % Please edit documentation in R/base.R
 \name{plot.qgcompfit}
 \alias{plot.qgcompfit}
-\title{plot.qgcompfit: default plotting method for a qgcompfit object}
+\title{default plotting method for a qgcompfit object}
 \usage{
 \method{plot}{qgcompfit}(
   x,
@@ -11,7 +11,7 @@
   modelfitline = TRUE,
   modelband = TRUE,
   flexfit = TRUE,
-  pointwiseref = 1,
+  pointwiseref = ceiling(x$q/2),
   ...
 )
 }

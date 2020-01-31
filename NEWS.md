@@ -1,7 +1,16 @@
+# qgcomp v2.1.2
+## Major changes
+- Documentation improvements
+- Added `qgcomp.zi.boot` function to fit non-linear/non-additive versions of quantile g-computation for zero-inflated Poisson or negative binomial models 
+- Added two functions to estimate confidence intervals for regression line fits and pointwise comparisons: modelbound.boot, pointwisebound.boot 
+
+## Bug fixes
+- MAJOR: Fixed error in confidence bounds in plot functions introduced in v2.0.0
+
 # qgcomp v2.0.0
 ## Major changes
 - Documentation improvements
-- Added `qgcomp.zi.boot` function to fit (linear/additive only) versions of quantile g-computation for zero-inflated Poisson or negative binomial models (adds additional dependency on `pscl` package)
+- Added `qgcomp.zi.noboot` function to fit (linear/additive only) versions of quantile g-computation for zero-inflated Poisson or negative binomial models (adds additional dependency on `pscl` package)
 - Major version change to account for possible breaking of old code in v.1.3.0
 
 ## Bug fixes

@@ -2,7 +2,7 @@
 % Please edit documentation in R/base.R
 \name{predict.qgcompfit}
 \alias{predict.qgcompfit}
-\title{predict.qgcompfit: default prediction method for a qgcompfit object (non-survival 
+\title{default prediction method for a qgcompfit object (non-survival 
 outcomes only)}
 \usage{
 \method{predict}{qgcompfit}(object, expnms = NULL, newdata = NULL, type = "response", ...)
@@ -26,7 +26,7 @@ on the linear predictor scale.}
 }
 \description{
 get predicted values from a qgcompfit object, or make predictions
-in a new set of data based on the qgcomfit object. Note that when making predictions
+in a new set of data based on the qgcompfit object. Note that when making predictions
 from an object from qgcomp.boot, the predictions are made from the g-computation
 model rather than the marginal structural model. Predictions from the marginal
 structural model can be obtained via \code{\link[qgcomp]{msm.predict}}

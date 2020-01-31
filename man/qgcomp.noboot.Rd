@@ -2,8 +2,7 @@
 % Please edit documentation in R/base.R
 \name{qgcomp.noboot}
 \alias{qgcomp.noboot}
-\title{estimating the parameters of a marginal structural model (MSM) based on 
-g-computation with quantized exposures}
+\title{quantile g-computation for continuous and binary outcomes under linearity/additivity}
 \usage{
 qgcomp.noboot(
   f,
@@ -43,7 +42,7 @@ id/cluster)}
 \item{bayes}{use underlying Bayesian model (`arm` package defaults). Results
 in penalized parameter estimation that can help with very highly correlated 
 exposures. Note: this does not lead to fully Bayesian inference in general, 
-so results should be interpereted as frequentist.}
+so results should be interpreted as frequentist.}
 
 \item{...}{arguments to glm (e.g. family)}
 }
@@ -52,11 +51,15 @@ a qgcompfit object, which contains information about the effect
  measure of interest (psi) and associated variance (var.psi), as well
  as information on the model fit (fit) and information on the 
  weights/standardized coefficients in the positive (pos.weights) and 
- negative (nweight) directions.
+ negative (neg.weights) directions.
 }
 \description{
-This function mimics the output of a weighted quantile sums regression in 
-large samples.
+This function estimates a linear dose-response parameter representing a one quantile
+increase in a set of exposures of interest. This function is limited to linear and additive
+effects of individual components of the exposure. This model estimates the parameters of a marginal 
+structural model (MSM) based on g-computation with quantized exposures. Note: this function is  
+valid only under linear and additive effects of individual components of the exposure, but when
+these hold the model can be fit with very little computational burden.
 }
 \details{
 For continuous outcomes, under a linear model with no 

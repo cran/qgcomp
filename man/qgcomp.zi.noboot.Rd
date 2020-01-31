@@ -2,8 +2,7 @@
 % Please edit documentation in R/base_zi.R
 \name{qgcomp.zi.noboot}
 \alias{qgcomp.zi.noboot}
-\title{estimating the parameters of a zero-inflated marginal structural model (MSM) based on 
-g-computation with quantized exposures}
+\title{quantile g-computation for zero-inflated count outcomes under linearity/additivity}
 \usage{
 qgcomp.zi.noboot(
   f,
@@ -42,23 +41,28 @@ id/cluster)}
 
 \item{bayes}{not yet implemented}
 
-\item{...}{arguments to zeroinf (e.g. dist)}
+\item{...}{arguments to zeroinfl (e.g. dist)}
 }
 \value{
 a qgcompfit object, which contains information about the effect
  measure of interest (psi) and associated variance (var.psi), as well
  as information on the model fit (fit) and information on the 
  weights/standardized coefficients in the positive (pos.weights) and 
- negative (nweight) directions.
+ negative (neg.weights) directions.
 }
 \description{
-This function mimics the output of a weighted quantile sums regression in 
-large samples.
+This function estimates a linear dose-response parameter representing a one quantile
+increase in a set of exposures of interest for zero-inflated count outcomes. This function is 
+limited to linear and additive
+effects of individual components of the exposure. This model estimates the parameters of a marginal 
+structural zero-inflated model (MSM) based on g-computation with quantized exposures. 
+Note: this function is valid only under linear and additive effects of individual components of the exposure, but when
+these hold the model can be fit with very little computational burden.
 }
 \details{
 A zero-inflated version of quantile g-computation based on the implementation in the
 'pscl' package. A zero-inflated distribution is a mixture distribution in which one of the
-distributions is a point mass at zero (with probability given by a logistoic model), and the 
+distributions is a point mass at zero (with probability given by a logistic model), and the 
 other distribution is a discrete or continuous distribution.
 This estimates the effect of a joint increase in all exposures on 1) the odds 
 of belonging to the "zero" vs. "count" portions of the distribution and/or 2) the rate parameter
