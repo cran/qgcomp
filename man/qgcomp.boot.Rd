@@ -11,12 +11,14 @@ qgcomp.boot(
   q = 4,
   breaks = NULL,
   id = NULL,
+  weights = NULL,
   alpha = 0.05,
   B = 200,
   rr = TRUE,
   degree = 1,
   seed = NULL,
   bayes = FALSE,
+  MCsize = nrow(data),
   parallel = FALSE,
   ...
 )
@@ -40,7 +42,12 @@ to define cutpoints.}
 
 \item{id}{(optional) NULL, or variable name indexing individual units of 
 observation (only needed if analyzing data with multiple observations per 
-id/cluster)}
+id/cluster). Note that qgcomp.noboot will not produce cluster-appropriate
+standard errors. Qgcomp.boot can be used for this, which will use bootstrap
+sampling of clusters/individuals to estimate cluster-appropriate standard
+errors via bootstrapping.}
+
+\item{weights}{not yet implemented}
 
 \item{alpha}{alpha level for confidence limit calculation}
 
@@ -60,6 +67,13 @@ is quadratic (default = 1).}
 in penalized parameter estimation that can help with very highly correlated 
 exposures. Note: this does not lead to fully Bayesian inference in general, 
 so results should be interpreted as frequentist.}
+
+\item{MCsize}{integer: sample size for simulation to approximate marginal 
+zero inflated model parameters. This can be left small for testing, but should be as large
+as needed to reduce simulation error to an acceptable magnitude (can compare psi coefficients for 
+linear fits with qgcomp.noboot to gain some intuition for the level of expected simulation 
+error at a given value of MCsize). This likely won't matter much in linear models, but may 
+be important with binary or count outcomes.}
 
 \item{parallel}{use (safe) parallel processing from the future and future.apply packages}
 

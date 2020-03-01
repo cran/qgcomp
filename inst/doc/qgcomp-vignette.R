@@ -213,12 +213,23 @@ qc.survfit1 <- qgcomp.cox.noboot(survival::Surv(disease_time, disease_state) ~ .
 qc.survfit1
 plot(qc.survfit1)
 
+# testing proportional hazards (must set x=TRUE in function call)
+qc.survfit1ph <- qgcomp.cox.noboot(survival::Surv(disease_time, disease_state) ~ .,expnms=Xnm,
+                         data=metals[,c(Xnm, 'disease_time', 'disease_state', "mage35")], q=4,
+                         x=TRUE)
+survival::cox.zph(qc.survfit1ph$fit)
+
 # bootstrapped version estimates a marginal structural model for the population average effect
 #library(survival)
 qc.survfit2 <- qgcomp.cox.boot(Surv(disease_time, disease_state) ~ .,expnms=Xnm,
                          data=metals[,c(Xnm, 'disease_time', 'disease_state')], q=4, 
                          B=5, MCsize=1000, parallel=TRUE)
 qc.survfit2
+
+# testing proportional hazards (note that x=TRUE is not needed (and will cause an error if used))
+survival::cox.zph(qc.survfit2$fit)
+
+
 p2 = plot(qc.survfit2, suppressprint = TRUE)  
 p2 + labs(title="Linear log(hazard ratio), overall and exposure specific")
 
@@ -228,6 +239,10 @@ qc.survfit3 <- qgcomp.cox.boot(Surv(disease_time, disease_state) ~ . + .^2,expnm
 qc.survfit3
 p3 = plot(qc.survfit3, suppressprint = TRUE) 
 p3 + labs(title="Non-linear log(hazard ratio) overall, linear exposure specific ln-HR")
+
+# testing global proportional hazards for model (note that x=TRUE is not needed (and will cause an error if used))
+phtest3 = survival::cox.zph(qc.survfit3$fit)
+phtest3$table[dim(phtest3$table)[1],, drop=FALSE]
 
 qc.survfit4 <- qgcomp.cox.boot(Surv(disease_time, disease_state) ~ . + .^2,expnms=Xnm,
                          data=metals[,c(Xnm, 'disease_time', 'disease_state')], q=4, 
@@ -242,4 +257,41 @@ hrs_q
 p4 = plot(qc.survfit4, suppressprint = TRUE) 
 p4 + labs(title="Non-linear log(hazard ratio), overall and exposure specific") 
 
+
+## ----clustering, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
+set.seed(2123)
+N = 250
+t = 4
+dat <- data.frame(row.names = 1:(N*t))
+dat <- within(dat, {
+  id = do.call("c", lapply(1:N, function(x) rep(x, t)))
+  u =  do.call("c", lapply(1:N, function(x) rep(runif(1), t)))
+  x1 = rnorm(N, u)
+  y = rnorm(N) + u + x1
+})
+
+# pre-quantize
+expnms = c("x1")
+datl = quantize(dat, expnms = expnms)
+
+qgcomp.noboot(y~ x1, data=datl$dat, family=gaussian(), q = NULL)
+
+# neither of these ways yields appropriate clustering
+#qgcomp.noboot(y~ x1, data=datl$dat, id="id", family=gaussian(), q = NULL)
+#qgcomp.boot(y~ x1, data=datl$dat, family=gaussian(), q = NULL, MCsize=1000)
+
+# clustering by specifying id parameter on
+qgcomp.boot(y~ x1, data=datl$dat, id="id", family=gaussian(), q = NULL, MCsize=1000, B = 5)
+#qgcomp.boot(y~ x1, data=datl$dat, id="id", family=gaussian(), q = NULL, MCsize=1000, B = 500)
+#   Mixture slope parameters (bootstrap CI):
+#   
+#               Estimate Std. Error Lower CI Upper CI t value
+#   (Intercept)  -0.4632     0.0730   -0.606    -0.32 3.3e-10
+#   psi1          0.9550     0.0398    0.877     1.03       0
+
+# This can be verified using the `sandwich` package 
+#fitglm = glm(y~x1, data=datl$dat)
+#sw.cov = sandwich::vcovCL(fitglm, cluster=~id, type = "HC0")[2,2]
+#sqrt(sw.cov)
+# [1] 0.0409
 

@@ -13,7 +13,9 @@ msm.fit(
   main = TRUE,
   degree = 1,
   id = NULL,
-  bayes,
+  weights = NULL,
+  bayes = FALSE,
+  MCsize = nrow(qdata),
   ...
 )
 }
@@ -44,10 +46,18 @@ is quadratic. Default=1)}
 observation (only needed if analyzing data with multiple observations per 
 id/cluster)}
 
+\item{weights}{not yet implemented}
+
 \item{bayes}{use underlying Bayesian model (`arm` package defaults). Results
 in penalized parameter estimation that can help with very highly correlated 
 exposures. Note: this does not lead to fully Bayesian inference in general, 
 so results should be interpreted as frequentist.}
+
+\item{MCsize}{integer: sample size for simulation to approximate marginal 
+zero inflated model parameters. This can be left small for testing, but should be as large
+as needed to reduce simulation error to an acceptable magnitude (can compare psi coefficients for 
+linear fits with qgcomp.zi.noboot to gain some intuition for the level of expected simulation 
+error at a given value of MCsize)}
 
 \item{...}{arguments to glm (e.g. family)}
 }

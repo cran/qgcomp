@@ -1,3 +1,19 @@
+# qgcomp v2.2.2
+## Major changes
+- Documentation improvements
+- Added `pointwisebound.boot()` and  `pointwisebound.noboot()` function to get confidence intervals for pointwise comparisons (e.g. mean outcome at all exposures below first quartile compared to mean outcome at all exposures above the third quartile. Used after qgcomp fits.
+- Added support for Poisson link in `qgcomp.boot()` and `qgcomp.noboot()` functions to fit quantile g-computation for count data 
+- Added `generics` and `tibble` package dependencies and optional installs of `broom`
+- Added functions to facilitate multiple imputation through the `mice` package.
+- Added `weight` parameters to base, zi, and cox (not yet used) in preparation for v2.3.0, which will implement weighting
+- Added `vc_comb()` to better calculate covariance matrices.
+
+## Bug fixes
+- Fixed an error in confidence bounds in plot functions introduced in v2.0.0 (binary outcomes in `qgcomp.boot`).
+- `id` parameter caused intermittent error when used in  `qgcomp.boot`
+- `MCsize` parameter caused intermittent error when used in  `qgcomp.boot`
+-  `vcov()` didn't yield a covariance matrix when applied to `qgcomp.*.noboot` objects
+
 # qgcomp v2.1.2
 ## Major changes
 - Documentation improvements

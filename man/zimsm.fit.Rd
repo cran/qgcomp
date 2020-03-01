@@ -2,7 +2,7 @@
 % Please edit documentation in R/base_zi.R
 \name{zimsm.fit}
 \alias{zimsm.fit}
-\title{marginal structural zero-inflated count models (MSM) based on within quantile g-computation}
+\title{secondary prediction method for the (zero-inflated) qgcomp MSM.}
 \usage{
 zimsm.fit(
   f,
@@ -12,6 +12,7 @@ zimsm.fit(
   main = TRUE,
   degree = 1,
   id = NULL,
+  weights = NULL,
   MCsize = 10000,
   containmix = list(count = TRUE, zero = TRUE),
   bayes = FALSE,
@@ -44,6 +45,8 @@ is quadratic. Default=1)}
 \item{id}{(optional) NULL, or variable name indexing individual units of 
 observation (only needed if analyzing data with multiple observations per 
 id/cluster)}
+
+\item{weights}{not yet implemented}
 
 \item{MCsize}{integer: sample size for simulation to approximate marginal 
 hazards ratios}

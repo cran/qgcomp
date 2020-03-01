@@ -26,13 +26,15 @@ Calculates: expected outcome (on the link scale), and upper and lower
 This method leverages the bootstrap distribution of qgcomp model coefficients
 to estimate pointwise regression line confidence bounds. These are defined as the bounds
 that, for each value of the independent variable X (here, X is the joint exposure quantiles)
-the 95% bounds for the model estimate of the regression line E(Y|X) are expected to include the
+the 95% bounds (for example) for the model estimate of the regression line E(Y|X) are expected to include the
 true value of E(Y|X) in 95% of studies. The "simultaneous" bounds are also calculated, and the 95%  
 simultaneous bounds contain the true value of E(Y|X) for all values of X in 95% of studies. The
 latter are more conservative and account for the multiple testing implied by the former. Pointwise
 bounds are calculated via the standard error for the estimates of E(Y|X), while the simultaneous
 bounds are estimated using the bootstrap method of Cheng (reference below). All bounds are large
-sample bounds that assume normality and thus will be underconservative in small samples.
+sample bounds that assume normality and thus will be underconservative in small samples. These
+bounds may also inclue illogical values (e.g. values less than 0 for a dichotomous outcome) and
+should be interpreted cautiously in small samples.
 
 
 Reference:

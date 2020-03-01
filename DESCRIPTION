@@ -1,7 +1,7 @@
 Package: qgcomp
 Title: Quantile G-Computation
-Version: 2.1.2
-Date: 2020-01-31
+Version: 2.2.2
+Date: 2020-03-01
 Authors@R: 
     person(given = "Alexander",
            family = "Keil",
@@ -22,15 +22,15 @@ Description: G-computation for a set of time-fixed exposures
     [stat.ME].
 License: GPL (>= 2)
 Depends: R (>= 3.5.0)
-Imports: arm, future, future.apply, ggplot2, grDevices, grid,
-        gridExtra, pscl, stats, survival
-Suggests: knitr
+Imports: arm, future, future.apply, generics, ggplot2, grDevices, grid,
+        gridExtra, pscl, stats, survival, tibble
+Suggests: broom, knitr, MASS, mice
 VignetteBuilder: knitr
 Encoding: UTF-8
 Language: en-US
 LazyData: true
 RoxygenNote: 7.0.2
 NeedsCompilation: no
-Packaged: 2020-01-31 14:32:50 UTC; akeil
+Packaged: 2020-03-01 22:25:53 UTC; akeil
 Repository: CRAN
-Date/Publication: 2020-01-31 15:10:02 UTC
+Date/Publication: 2020-03-01 23:00:02 UTC
