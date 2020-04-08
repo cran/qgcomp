@@ -2,7 +2,7 @@
 % Please edit documentation in R/base_zi.R
 \name{qgcomp.zi.boot}
 \alias{qgcomp.zi.boot}
-\title{quantile g-computation for zero-inflated count outcomes}
+\title{Quantile g-computation for zero-inflated count outcomes}
 \usage{
 qgcomp.zi.boot(
   f,
@@ -11,7 +11,7 @@ qgcomp.zi.boot(
   q = 4,
   breaks = NULL,
   id = NULL,
-  weights = NULL,
+  weights,
   alpha = 0.05,
   B = 200,
   degree = 1,
@@ -44,7 +44,8 @@ to define cutpoints.}
 observation (only needed if analyzing data with multiple observations per 
 id/cluster)}
 
-\item{weights}{not yet implemented}
+\item{weights}{"case weights" - passed to the "weight" argument of 
+\code{\link[pscl]{zeroinfl}}. NOTE - this does not work with parallel=TRUE!}
 
 \item{alpha}{alpha level for confidence limit calculation}
 
@@ -142,9 +143,29 @@ plot(density(res2$bootsamps[4,]))
 # negative binomial count model, mixture and covariate in both portions
 qgcomp.zi.boot(f=y ~ z + x1 + x2 | z + x1 + x2, expnms = c('x1', 'x2'), 
    data=dat, q=4, dist="negbin", B=10, MCsize=10000) 
+   
+# weighted analysis (NOTE THIS DOES NOT WORK WITH parallel=TRUE!)
+dat$w = runif(n)*5
+qgcomp.zi.noboot(f=y ~ z + x1 + x2 | x1 + x2, expnms = c('x1', 'x2'), 
+    data=dat, q=4, dist="poisson", weights=w)
+# Expect this:     
+# Warning message:
+# In eval(family$initialize) : non-integer #successes in a binomial glm!
+qgcomp.zi.boot(f=y ~ x1 + x2 | x1 + x2, expnms = c('x1', 'x2'), 
+    data=dat, q=4, dist="poisson", B=5, MCsize=50000, parallel=FALSE, weights=w)
+# Log rr per one IQR change in all exposures (not on quantile basis)
+dat$x1iqr <- dat$x1/with(dat, diff(quantile(x1, c(.25, .75))))
+dat$x2iqr <- dat$x2/with(dat, diff(quantile(x2, c(.25, .75))))
+# note that I(x>...) now operates on the untransformed value of x,
+# rather than the quantized value
+res2 = qgcomp.zi.boot(y ~ z + x1iqr + x2iqr + I(x2iqr>0.1) + I(x2>0.4) + I(x2>0.9) | x1iqr + x2iqr, 
+                   family="binomial", expnms = c('x1iqr', 'x2iqr'), data=dat, q=NULL, B=2, 
+                   degree=2, MCsize=200, dist="poisson")
+res2
 }
 }
 \seealso{
-\code{\link[qgcomp]{qgcomp.noboot}}, and \code{\link[qgcomp]{qgcomp}}
+\code{\link[qgcomp]{qgcomp.zi.noboot}},\code{\link[qgcomp]{qgcomp.boot}}, 
+\code{\link[qgcomp]{qgcomp.cox.boot}},  and \code{\link[pscl]{zeroinfl}}
 }
 \concept{variance mixtures}

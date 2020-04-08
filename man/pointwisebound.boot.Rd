@@ -2,7 +2,7 @@
 % Please edit documentation in R/base.R
 \name{pointwisebound.boot}
 \alias{pointwisebound.boot}
-\title{estimating pointwise comparisons for qgcomp.boot objects}
+\title{Estimating pointwise comparisons for qgcomp.boot objects}
 \usage{
 pointwisebound.boot(x, alpha = 0.05, pointwiseref = 1)
 }
@@ -48,8 +48,9 @@ are made at the median value of all covariates).
 \examples{
 set.seed(12)
 \donttest{
-dat <- data.frame(x1=(x1 <- runif(50)), x2=runif(50), x3=runif(50), z=runif(50),
-                  y=runif(50)+x1+x1^2)
+n=100
+dat <- data.frame(x1=(x1 <- runif(100)), x2=runif(100), x3=runif(100), z=runif(100),
+                  y=runif(100)+x1+x1^2)
 ft <- qgcomp.boot(y ~ z + x1 + x2 + x3, expnms=c('x1','x2','x3'), data=dat, q=10)
 pointwisebound.boot(ft, alpha=0.05, pointwiseref=3)
 }

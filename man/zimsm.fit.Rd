@@ -2,7 +2,7 @@
 % Please edit documentation in R/base_zi.R
 \name{zimsm.fit}
 \alias{zimsm.fit}
-\title{secondary prediction method for the (zero-inflated) qgcomp MSM.}
+\title{Secondary prediction method for the (zero-inflated) qgcomp MSM.}
 \usage{
 zimsm.fit(
   f,
@@ -12,7 +12,7 @@ zimsm.fit(
   main = TRUE,
   degree = 1,
   id = NULL,
-  weights = NULL,
+  weights,
   MCsize = 10000,
   containmix = list(count = TRUE, zero = TRUE),
   bayes = FALSE,

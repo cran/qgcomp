@@ -200,7 +200,7 @@ BIC(qc.fit6lin$fit)
 BIC(qc.fit6nonlin$fit)
 BIC(qc.fit6nonhom$fit)
 
-## ----time-to-event, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
+## ----time-to-event1, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
 # non-bootstrapped version estimates a marginal structural model for the 
 # confounder-conditional effect
 survival::coxph(survival::Surv(disease_time, disease_state) ~ iron + lead + cadmium + 
@@ -213,12 +213,8 @@ qc.survfit1 <- qgcomp.cox.noboot(survival::Surv(disease_time, disease_state) ~ .
 qc.survfit1
 plot(qc.survfit1)
 
-# testing proportional hazards (must set x=TRUE in function call)
-qc.survfit1ph <- qgcomp.cox.noboot(survival::Surv(disease_time, disease_state) ~ .,expnms=Xnm,
-                         data=metals[,c(Xnm, 'disease_time', 'disease_state', "mage35")], q=4,
-                         x=TRUE)
-survival::cox.zph(qc.survfit1ph$fit)
 
+## ----time-to-event2, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
 # bootstrapped version estimates a marginal structural model for the population average effect
 #library(survival)
 qc.survfit2 <- qgcomp.cox.boot(Surv(disease_time, disease_state) ~ .,expnms=Xnm,
@@ -228,11 +224,12 @@ qc.survfit2
 
 # testing proportional hazards (note that x=TRUE is not needed (and will cause an error if used))
 survival::cox.zph(qc.survfit2$fit)
-
-
 p2 = plot(qc.survfit2, suppressprint = TRUE)  
 p2 + labs(title="Linear log(hazard ratio), overall and exposure specific")
 
+
+
+## ----time-to-event3, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
 qc.survfit3 <- qgcomp.cox.boot(Surv(disease_time, disease_state) ~ . + .^2,expnms=Xnm,
                          data=metals[,c(Xnm, 'disease_time', 'disease_state')], q=4, 
                          B=5, MCsize=1000, parallel=TRUE)
@@ -240,9 +237,8 @@ qc.survfit3
 p3 = plot(qc.survfit3, suppressprint = TRUE) 
 p3 + labs(title="Non-linear log(hazard ratio) overall, linear exposure specific ln-HR")
 
-# testing global proportional hazards for model (note that x=TRUE is not needed (and will cause an error if used))
-phtest3 = survival::cox.zph(qc.survfit3$fit)
-phtest3$table[dim(phtest3$table)[1],, drop=FALSE]
+
+## ----time-to-event4, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
 
 qc.survfit4 <- qgcomp.cox.boot(Surv(disease_time, disease_state) ~ . + .^2,expnms=Xnm,
                          data=metals[,c(Xnm, 'disease_time', 'disease_state')], q=4, 
@@ -256,6 +252,22 @@ hrs_q
 
 p4 = plot(qc.survfit4, suppressprint = TRUE) 
 p4 + labs(title="Non-linear log(hazard ratio), overall and exposure specific") 
+
+
+## ----time-to-event5, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
+
+# testing proportional hazards (must set x=TRUE in function call)
+qc.survfit1ph <- qgcomp.cox.noboot(survival::Surv(disease_time, disease_state) ~ .,expnms=Xnm,
+                         data=metals[,c(Xnm, 'disease_time', 'disease_state', "mage35")], q=4,
+                         x=TRUE)
+survival::cox.zph(qc.survfit1ph$fit)
+
+
+## ----time-to-event6, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
+
+# testing global proportional hazards for model (note that x=TRUE is not needed (and will cause an error if used))
+phtest3 = survival::cox.zph(qc.survfit3$fit)
+phtest3$table[dim(phtest3$table)[1],, drop=FALSE]
 
 
 ## ----clustering, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
@@ -294,4 +306,43 @@ qgcomp.boot(y~ x1, data=datl$dat, id="id", family=gaussian(), q = NULL, MCsize=1
 #sw.cov = sandwich::vcovCL(fitglm, cluster=~id, type = "HC0")[2,2]
 #sqrt(sw.cov)
 # [1] 0.0409
+
+## ----pe1, fig.height=5, fig.width=7.5-----------------------------------------
+(qc.fit.adj <- qgcomp.noboot(y~.,dat=metals[,c(Xnm, covars, 'y')], expnms=Xnm, family=gaussian()))
+plot(qc.fit.adj)
+
+## ----pe2----------------------------------------------------------------------
+# 40/60% training/validation split
+set.seed(1231124)
+trainidx <- sample(1:nrow(metals), round(nrow(metals)*0.4))
+valididx <- setdiff(1:nrow(metals),trainidx)
+traindata <- metals[trainidx,]
+validdata <- metals[valididx,]
+dim(traindata) # 181 observations = 40% of total
+dim(validdata) # 271 observations = 60% of total
+
+## ----pe3, fig.height=5, fig.width=7.5-----------------------------------------
+	
+
+splitres <- qgcomp.partials(fun="qgcomp.noboot", f=y~., q=4, 
+           traindata=traindata[,c(Xnm, covars, "y")],validdata=validdata[,c(Xnm, covars, "y")], expnms=Xnm)
+splitres
+
+plot(splitres$pos.fit)
+
+
+## ----pe4----------------------------------------------------------------------
+
+
+nonessentialXnm <- c(
+    'arsenic','barium','cadmium','chromium','lead','mercury','silver'
+)
+essentialXnm <- c(
+  'sodium','magnesium','calcium','manganese','iron','copper','zinc','selenium'
+)
+covars = c('nitrate','nitrite','sulfate','ph', 'total_alkalinity','total_hardness')
+
+
+(qc.fit.essential <- qgcomp.noboot(y~.,dat=metals[,c(Xnm, covars, 'y')], expnms=essentialXnm, family=gaussian()))
+(qc.fit.nonessential <- qgcomp.noboot(y~.,dat=metals[,c(Xnm, covars, 'y')], expnms=nonessentialXnm, family=gaussian()))
 

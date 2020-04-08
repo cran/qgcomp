@@ -1,6 +1,6 @@
 
 se_comb <- function(expnms, covmat, grad=NULL){
-  #' @title calculate standard error of weighted linear combination of random variables
+  #' @title Calculate standard error of weighted linear combination of random variables
   #' @description This function uses the Delta method to calculate standard errors of linear
   #' functions of variables (similar to `lincom` in Stata). Generally, users will not need to 
   #' call this function directly.
@@ -58,7 +58,7 @@ se_comb <- function(expnms, covmat, grad=NULL){
 }
 
 vc_comb <- function(aname="(Intercept)", expnms, covmat, grad=NULL){
-  #' @title calculate covariance matrix between one random variable and a linear combination of 
+  #' @title Calculate covariance matrix between one random variable and a linear combination of 
   #' random variables
   #' @description This function uses the Delta method to calculate a covariance matrix of linear
   #' functions of variables and is used internally in qgcomp. Generally, users will not need to 
@@ -128,7 +128,7 @@ grad.poly <- function(intvals, degree){
 
 
 quantize <- function (data, expnms, q=4, breaks=NULL) {
-  #' @title quantizing exposure data
+  #' @title Quantizing exposure data
   #' @description Create variables representing indicator functions with cutpoints defined
   #' by quantiles. Output a list that includes: 1) a dataset that is a copy of data, 
   #' except that the variables whose names are included in the `expnms` variable are 
@@ -140,7 +140,7 @@ quantize <- function (data, expnms, q=4, breaks=NULL) {
   #' 'x1' will be replaced in the output data by another 'x1' that takes on values
   #' 0:(q-1), where, for example, the value 1 indicates that the original x1 value
   #' falls between the first and the second quantile.
-  #' @return A list containing 
+  #' @return A list containing the following fields
   #' \describe{
   #' \item{data}{a quantized version of the original dataframe}
   #' \item{breaks}{a list of the quantile cutpoints used to create the quantized variables which
@@ -201,7 +201,7 @@ quantize <- function (data, expnms, q=4, breaks=NULL) {
 }
 
 checknames <- function(terms){
-  #' @title check for valid model terms in a qgcomp fit
+  #' @title Check for valid model terms in a qgcomp fit
   #' @description This is an internal function called by \code{\link[qgcomp]{qgcomp}},
   #'  \code{\link[qgcomp]{qgcomp.boot}}, and \code{\link[qgcomp]{qgcomp.noboot}},
   #'  but is documented here for clarity. Generally, users will not need to call
@@ -227,10 +227,10 @@ msm.fit <- function(f,
                     main=TRUE, 
                     degree=1, 
                     id=NULL,
-                    weights=NULL,
+                    weights,
                     bayes=FALSE, 
                     MCsize=nrow(qdata), ...){
-  #' @title fitting marginal structural model (MSM) within quantile g-computation 
+  #' @title Fitting marginal structural model (MSM) within quantile g-computation 
   #' @description This is an internal function called by \code{\link[qgcomp]{qgcomp}},
   #'  \code{\link[qgcomp]{qgcomp.boot}}, and \code{\link[qgcomp]{qgcomp.noboot}},
   #'  but is documented here for clarity. Generally, users will not need to call
@@ -264,7 +264,8 @@ msm.fit <- function(f,
   #' @param id (optional) NULL, or variable name indexing individual units of 
   #' observation (only needed if analyzing data with multiple observations per 
   #' id/cluster)
-  #' @param weights not yet implemented
+  #' @param weights "case weights" - passed to the "weight" argument of 
+  #' \code{\link[stats]{glm}} or \code{\link[arm]{bayesglm}}
   #' @param bayes use underlying Bayesian model (`arm` package defaults). Results
   #' in penalized parameter estimation that can help with very highly correlated 
   #' exposures. Note: this does not lead to fully Bayesian inference in general, 
@@ -287,20 +288,36 @@ msm.fit <- function(f,
   #'         expnms = c('x1', 'x2'), qdata=qdat, intvals=1:4, bayes=FALSE)
   #' summary(mod$fit) # outcome regression model
   #' summary(mod$msmfit) # msm fit (variance not valid - must be obtained via bootstrap)
-    XXweights <- NULL
+  
+    newform <- terms(f, data = qdata)
+    nobs = nrow(qdata)
+    thecall <- match.call(expand.dots = FALSE)
+    names(thecall) <- gsub("qdata", "data", names(thecall))
+    names(thecall) <- gsub("f", "formula", names(thecall))
+    m <- match(c("formula", "data", "weights", "offset"), names(thecall), 0L)
+    hasweights = ifelse("weights" %in% names(thecall), TRUE, FALSE)
+    thecall <- thecall[c(1L, m)]
+    thecall$drop.unused.levels <- TRUE
+    
+    thecall[[1L]] <- quote(stats::model.frame)
+    thecalle <- eval(thecall, parent.frame())
+    if(hasweights){
+      qdata$weights <- as.vector(model.weights(thecalle))
+    } else qdata$weights = rep(1, nobs)
+  
     if(is.null(id)) {
       id <- "id__"
       qdata$id__ <- 1:dim(qdata)[1]
     }
     # conditional outcome regression fit
     nidx = which(!(names(qdata) %in% id))
-    if(!bayes) fit <- glm(f, data = qdata[,nidx,drop=FALSE],
-                          #weights-weights, 
+    if(!bayes) fit <- glm(newform, data = qdata,
+                          weights=weights, 
                           ...)
     if(bayes){
       requireNamespace("arm")
       fit <- bayesglm(f, data = qdata[,nidx,drop=FALSE],
-                      #weights-weights, 
+                      weights=weights, 
                       ...)
     } 
     if(fit$family$family %in% c("gaussian", "poisson")) rr=FALSE
@@ -329,30 +346,29 @@ msm.fit <- function(f,
     #  intervention
     #nobs <- dim(qdata)[1]
     msmdat <- data.frame(
-      Ya = unlist(predmat),
-      psi = rep(intvals, each=MCsize))
-    #if(!is.null(weights)){
-    #  msmdat[,'__weights'] = newdata[,weights]
-    #}
-    #if(is.null(weights)){
-    #  msmdat[,'XXweights'] = 1
-    #}
+      cbind(
+        Ya = unlist(predmat),
+        psi = rep(intvals, each=MCsize),
+        weights = rep(newdata$weights, times=length(intvals))
+                      #times=length(table(qdata[expnms[1]])))
+      )
+      )
     # to do: allow functional form variations for the MSM via specifying the model formula
     if(bayes){
       if(!rr) suppressWarnings(msmfit <- bayesglm(Ya ~ poly(psi, degree=degree, raw=TRUE), data=msmdat,
-                                                  weights=XXweights, x=TRUE,
+                                                  weights=weights, x=TRUE,
                                                   ...))
       if(rr)  suppressWarnings(msmfit <- bayesglm(Ya ~ poly(psi, degree=degree, raw=TRUE), data=msmdat, 
                                                   family=binomial(link='log'), start=rep(-0.0001, degree+1),
-                                                  weights=XXweights, x=TRUE))
+                                                  weights=weights, x=TRUE))
     }
     if(!bayes){
       if(!rr) suppressWarnings(msmfit <- glm(Ya ~ poly(psi, degree=degree, raw=TRUE), data=msmdat,
-                                             weights=XXweights, x=TRUE,
+                                             weights=weights, x=TRUE,
                                              ...))
       if(rr)  suppressWarnings(msmfit <- glm(Ya ~ poly(psi, degree=degree, raw=TRUE), data=msmdat, 
                                              family=binomial(link='log'), start=rep(-0.0001, degree+1),
-                                             weights=XXweights, x=TRUE))
+                                             weights=weights, x=TRUE))
     }
     res <- list(fit=fit, msmfit=msmfit)
     if(main) {
@@ -371,11 +387,11 @@ qgcomp.noboot <- function(f,
                           q=4, 
                           breaks=NULL, 
                           id=NULL, 
-                          weights=NULL, 
+                          weights, 
                           alpha=0.05, 
                           bayes=FALSE, 
                           ...){
-  #' @title quantile g-computation for continuous, binary, and count outcomes under linearity/additivity
+  #' @title Quantile g-computation for continuous, binary, and count outcomes under linearity/additivity
   #'
   #' @description This function estimates a linear dose-response parameter representing a one quantile
   #' increase in a set of exposures of interest. This function is limited to linear and additive
@@ -412,7 +428,8 @@ qgcomp.noboot <- function(f,
   #' Qgcomp.boot can be used for this, which will use bootstrap
   #' sampling of clusters/individuals to estimate cluster-appropriate standard
   #' errors via bootstrapping.
-  #' @param weights not yet implemented
+  #' @param weights "case weights" - passed to the "weight" argument of 
+  #' \code{\link[stats]{glm}} or \code{\link[arm]{bayesglm}}
   #' @param alpha alpha level for confidence limit calculation
   #' @param bayes use underlying Bayesian model (`arm` package defaults). Results
   #' in penalized parameter estimation that can help with very highly correlated 
@@ -439,8 +456,39 @@ qgcomp.noboot <- function(f,
   #' # poisson model
   #' dat3 <- data.frame(y=rpois(50, .5), x1=runif(50), x2=runif(50), z=runif(50))
   #' qgcomp.noboot(f=y ~ z + x1 + x2, expnms = c('x1', 'x2'), data=dat3, q=2, family=poisson())
+  #' # weighted model
+  #' N=5000
+  #' dat4 <- data.frame(y=runif(N), x1=runif(N), x2=runif(N), z=runif(N))
+  #' dat4$w=runif(N)*2
+  #' qdata = quantize(dat4, expnms = c("x1", "x2"))$data
+  #' (qgcfit <- qgcomp.noboot(f=y ~ z + x1 + x2, expnms = c('x1', 'x2'), data=dat4, q=4, 
+  #'                          family=gaussian(), weights=w))
+  #' qgcfit$fit
+  #' glm(y ~ z + x1 + x2, data = qdata, weights=w)
+
+  newform <- terms(f, data = data)
+
+  nobs = nrow(data)
+  origcall <- thecall <- match.call(expand.dots = FALSE)
+  names(thecall) <- gsub("f", "formula", names(thecall))
+  m <- match(c("formula", "data", "weights", "offset"), names(thecall), 0L)
+  #m <- match(c("f", "data", "weights", "offset"), names(thecall), 0L)
+  hasweights = ifelse("weights" %in% names(thecall), TRUE, FALSE)
+  thecall <- thecall[c(1L, m)]
+  thecall$drop.unused.levels <- TRUE
+  
+  thecall[[1L]] <- quote(stats::model.frame)
+  thecalle <- eval(thecall, parent.frame())
+  if(hasweights){
+    data$weights <- as.vector(model.weights(thecalle))
+  } else data$weights = rep(1, nobs)
+
+
   if (is.null(expnms)) {
-    expnms <- attr(terms(f, data = data), "term.labels")
+  
+    #expnms <- attr(terms(f, data = data), "term.labels")
+    expnms <- attr(newform, "term.labels")
+  
     message("Including all model terms as exposures of interest\n")      
   }
   lin = checknames(expnms)
@@ -458,15 +506,27 @@ qgcomp.noboot <- function(f,
       id = "id__"
       qdata$id__ = 1:dim(qdata)[1]
     }
-    if(!bayes) fit <- glm(f, data = qdata[,!(names(qdata) %in% id), drop=FALSE],
-                          #weights=weights,
-                          ...)
-    if(bayes){
-      requireNamespace("arm")
-      fit <- bayesglm(f, data = qdata[,!(names(qdata) %in% id), drop=FALSE],
-                      #weights=weights,
-                      ...)
-    }
+  
+  if(!bayes) fit <- glm(newform, data = qdata,
+                        weights=weights,
+                        ...)
+  if(bayes){
+    requireNamespace("arm")
+    fit <- bayesglm(newform, data = qdata,
+                    weights=weights,
+                    ...)
+  }
+  
+
+    #if(!bayes) fit <- glm(f, data = qdata[,!(names(qdata) %in% id), drop=FALSE],
+    #                      #weights=weights,
+    #                      ...)
+    #if(bayes){
+    #  requireNamespace("arm")
+    #  fit <- bayesglm(f, data = qdata[,!(names(qdata) %in% id), drop=FALSE],
+    #                  #weights=weights,
+    #                  ...)
+    #}
     mod <- summary(fit)
     if(length(setdiff(expnms, rownames(mod$coefficients)))>0){
       stop("Model aliasing occurred, likely due to perfectly correlated quantized exposures. 
@@ -516,7 +576,8 @@ qgcomp.noboot <- function(f,
       neg.size = sum(abs(wcoef[neg.coef])),
       bootstrap=FALSE,
       cov.yhat=NULL,
-      alpha=alpha
+      alpha=alpha,
+      call=origcall
     )
       if(fit$family$family=='gaussian'){
         res$tstat <- tstat
@@ -537,7 +598,7 @@ qgcomp.boot <- function(f,
                         q=4, 
                         breaks=NULL, 
                         id=NULL, 
-                        weights=NULL, 
+                        weights, 
                         alpha=0.05, 
                         B=200, 
                         rr=TRUE, 
@@ -546,7 +607,7 @@ qgcomp.boot <- function(f,
                         bayes=FALSE, 
                         MCsize=nrow(data), 
                         parallel=FALSE, ...){
-  #' @title quantile g-computation for continuous and binary outcomes 
+  #' @title Quantile g-computation for continuous and binary outcomes 
   #'  
   #' @description This function estimates a linear dose-response parameter representing a one quantile
   #' increase in a set of exposures of interest. This model estimates the parameters of a marginal 
@@ -581,7 +642,8 @@ qgcomp.boot <- function(f,
   #' standard errors. Qgcomp.boot can be used for this, which will use bootstrap
   #' sampling of clusters/individuals to estimate cluster-appropriate standard
   #' errors via bootstrapping.
-  #' @param weights not yet implemented
+  #' @param weights "case weights" - passed to the "weight" argument of 
+  #' \code{\link[stats]{glm}} or \code{\link[arm]{bayesglm}}
   #' @param alpha alpha level for confidence limit calculation
   #' @param B integer: number of bootstrap iterations (this should typically be
   #' >=200, though it is set lower in examples to improve run-time).
@@ -628,6 +690,10 @@ qgcomp.boot <- function(f,
   #' qgcomp.boot(y ~ z + x1 + x2 + I(x1^2) + I(x2*x1), family="gaussian", 
   #'  expnms = c('x1', 'x2'), data=dat, q=4, B=200)
   #'  
+  #' # generally non-linear/non-addiive underlying models lead to non-linear mixture slopes
+  #' qgcomp.boot(y ~ z + x1 + x2 + I(x1^2) + I(x2*x1), family="gaussian", 
+  #'  expnms = c('x1', 'x2'), data=dat, q=4, B=200, deg=2)
+  #'  
   #' # binary outcome
   #' dat <- data.frame(y=rbinom(50,1,0.5), x1=runif(50), x2=runif(50), z=runif(50))
   #' 
@@ -638,7 +704,7 @@ qgcomp.boot <- function(f,
   #' #Marginal mixture OR (population average OR - in general, this will not equal the 
   #' # conditional mixture OR due to non-collapsibility of the OR)
   #' qgcomp.boot(y ~ z + x1 + x2, family="binomial", expnms = c('x1', 'x2'), 
-  #'   data=dat, q=2, B=3)
+  #'   data=dat, q=2, B=3, rr=FALSE)
   #'   
   #' # Population average mixture RR
   #' qgcomp.boot(y ~ z + x1 + x2, family="binomial", expnms = c('x1', 'x2'), 
@@ -657,7 +723,8 @@ qgcomp.boot <- function(f,
   #'   family="binomial", expnms = c('x1', 'x2'), data=dat, q=4, rr=TRUE, B=200, 
   #'   degree=2)
   #' res2$fit  
-  #' res2$msmfit  
+  #' res2$msmfit  # correct point estimates, incorrect standard errors
+  #' res2  # correct point estimates, correct standard errors
   #' plot(res2)
   #' # Log risk ratio per one IQR change in all exposures (not on quantile basis)
   #' dat$x1iqr <- dat$x1/with(dat, diff(quantile(x1, c(.25, .75))))
@@ -673,14 +740,60 @@ qgcomp.boot <- function(f,
   #' qgcomp.boot(y ~ z + x1iqr + I(x2iqr>0.1) + I(x2>0.4) + I(x2>0.9), 
   #'   family="binomial", expnms = c('x1iqr', 'x2iqr'), data=dat, q=NULL, rr=TRUE, B=200, 
   #'   degree=2, parallel=TRUE)
+  #'
+  #'
+  #' # weighted model
+  #' N=5000
+  #' dat4 <- data.frame(id=1:N, x1=runif(N), x2=runif(N), z=runif(N))
+  #' dat4$y <- with(dat4, rnorm(N, x1*z + z, 1))
+  #' dat4$w=runif(N) + dat4$z*5
+  #' qdata = quantize(dat4, expnms = c("x1", "x2"), q=4)$data
+  #' # first equivalent models with no covariates
+  #' qgcomp.noboot(f=y ~ x1 + x2, expnms = c('x1', 'x2'), data=dat4, q=4, family=gaussian())
+  #' qgcomp.noboot(f=y ~ x1 + x2, expnms = c('x1', 'x2'), data=dat4, q=4, family=gaussian(), 
+  #'               weights=w)
+  #' 
+  #' set.seed(13)
+  #' qgcomp.boot(f=y ~ x1 + x2, expnms = c('x1', 'x2'), data=dat4, q=4, family=gaussian(), 
+  #'             weights=w)
+  #' # using the correct model
+  #' set.seed(13)
+  #' qgcomp.boot(f=y ~ x1*z + x2, expnms = c('x1', 'x2'), data=dat4, q=4, family=gaussian(), 
+  #'             weights=w, id="id")
+  #' (qgcfit <- qgcomp.boot(f=y ~ z + x1 + x2, expnms = c('x1', 'x2'), data=dat4, q=4, 
+  #'                        family=gaussian(), weights=w))
+  #' qgcfit$fit
+  #' summary(glm(y ~ z + x1 + x2, data = qdata, weights=w))
   #' }
   # character names of exposure mixture components
     oldq = NULL
     if(is.null(seed)) seed = round(runif(1, min=0, max=1e8))
+  
+    newform <- terms(f, data = data)
+    class(newform) <- "formula"
+  
+    nobs = nrow(data)
+    origcall <- thecall <- match.call(expand.dots = FALSE)
+    names(thecall) <- gsub("f", "formula", names(thecall))
+    m <- match(c("formula", "data", "weights", "offset"), names(thecall), 0L)
+    hasweights = ifelse("weights" %in% names(thecall), TRUE, FALSE)
+    thecall <- thecall[c(1L, m)]
+    thecall$drop.unused.levels <- TRUE
+    
+    thecall[[1L]] <- quote(stats::model.frame)
+    thecalle <- eval(thecall, parent.frame())
+    if(hasweights){
+      data$weights <- as.vector(model.weights(thecalle))
+    } else data$weights = rep(1, nobs)
+  
+  
     if (is.null(expnms)) {
-      expnms <- attr(terms(f, data = data), "term.labels")
+    
+      #expnms <- attr(terms(f, data = data), "term.labels")
+      expnms <- attr(newform, "term.labels")
+    
       message("Including all model terms as exposures of interest\n")      
-    }
+    }    
     lin = checknames(expnms)
     if(!lin) stop("Model appears to be non-linear and I'm having trouble parsing it: 
                   please use `expnms` parameter to define the variables making up the exposure")
@@ -727,10 +840,10 @@ qgcomp.boot <- function(f,
       qdata$id__ <- 1:dim(qdata)[1]
     }
     ###
-    msmfit <- msm.fit(f, qdata, intvals, expnms, rr, main=TRUE,degree=degree, id=id, bayes, 
+    msmfit <- msm.fit(newform, qdata, intvals, expnms, rr, main=TRUE,degree=degree, id=id, 
+                      weights, 
+                      bayes, 
                       MCsize=MCsize, 
-                      #weights=weights, 
-                      weights=NULL,
                       ...)
     # main estimate  
     #estb <- as.numeric(msmfit$msmfit$coefficients[-1])
@@ -741,7 +854,7 @@ qgcomp.boot <- function(f,
     starttime = Sys.time()
     psi.only <- function(i=1, f=f, qdata=qdata, intvals=intvals, expnms=expnms, rr=rr, degree=degree, 
                          nids=nids, id=id,
-                         weights=NULL,
+                         weights,
                          ...){
       if(i==2 & !parallel){
         timeiter = as.numeric(Sys.time() - starttime)
@@ -753,8 +866,7 @@ qgcomp.boot <- function(f,
                                              )))
       names(bootids) <- id
       qdata_ <- merge(qdata,bootids, by=id, all.x=FALSE, all.y=TRUE)
-      ft = msm.fit(f, qdata_, intvals, expnms, rr, main=FALSE, degree, id, bayes, MCsize=MCsize,
-                   weights=weights,
+      ft = msm.fit(f, qdata_, intvals, expnms, rr, main=FALSE, degree, id, weights=weights, bayes, MCsize=MCsize,
                    ...)
       yhatty = data.frame(yhat=predict(ft$msmfit), psi=ft$msmfit$data[,"psi"])
       as.numeric(
@@ -767,16 +879,14 @@ qgcomp.boot <- function(f,
       future::plan(strategy = future::multiprocess)
       bootsamps <- future.apply::future_sapply(X=1:B, FUN=psi.only,f=f, qdata=qdata, intvals=intvals, 
                           expnms=expnms, rr=rr, degree=degree, nids=nids, id=id,
-                          #weights=weights, 
-                          weights=NULL, 
+                          weights=qdata$weights,
                           ...)
       
       future::plan(future::sequential)
     }else{
       bootsamps <- sapply(X=1:B, FUN=psi.only,f=f, qdata=qdata, intvals=intvals, 
                           expnms=expnms, rr=rr, degree=degree, nids=nids, id=id,
-                          #weights=weights, 
-                          weights=NULL, 
+                          weights=weights, 
                           ...)
       
     }
@@ -808,7 +918,8 @@ qgcomp.boot <- function(f,
       y.expected=msmfit$Ya, y.expectedmsm=msmfit$Yamsm, index=msmfit$A,
       bootsamps = bootsamps,
       cov.yhat=cov.yhat,
-      alpha=alpha
+      alpha=alpha,
+      call=origcall
     )
       if(msmfit$fit$family$family=='gaussian'){
         res$tstat <- tstat
@@ -825,7 +936,7 @@ qgcomp.boot <- function(f,
 
 
 qgcomp <- function(f,data=data,family=gaussian(),rr=TRUE,...){
-  #' @title quantile g-computation for continuous, binary, count, and censored survival outcomes
+  #' @title Quantile g-computation for continuous, binary, count, and censored survival outcomes
   #' 
   #' @description This function automatically selects between qgcomp.noboot, qgcomp.boot,
   #'  qgcomp.cox.noboot, and qgcomp.cox.boot
@@ -875,15 +986,17 @@ qgcomp <- function(f,data=data,family=gaussian(),rr=TRUE,...){
   #' qgcomp.boot(y ~ z + x1 + x2, expnms = c('x1', 'x2'), data=dat, q=2, B=10, seed=125)
   #' # automatically selects appropriate method
   #' qgcomp(y ~ z + x1 + x2, expnms = c('x1', 'x2'), data=dat, q=2)
-  #' # note for binary outcome this will 
+  #' # note for binary outcome this will choose the risk ratio (and bootstrap methods) by default
   #' dat <- data.frame(y=rbinom(100, 1, 0.5), x1=runif(100), x2=runif(100), z=runif(100))
   #' \donttest{
   #' qgcomp.noboot(y ~ z + x1 + x2, expnms = c('x1', 'x2'), data=dat, q=2, family=binomial())
-  #' qgcomp.boot(y ~ z + x1 + x2, expnms = c('x1', 'x2'), data=dat, q=2, B=10, seed=125, 
-  #'   family=binomial())
-  #'   
-  #' # automatically selects appropriate method
+  #' set.seed(1231)
+  #' qgcomp.boot(y ~ z + x1 + x2, expnms = c('x1', 'x2'), data=dat, q=2, family=binomial())
+  #' set.seed(1231)
   #' qgcomp(y ~ z + x1 + x2, expnms = c('x1', 'x2'), data=dat, q=2, family=binomial())
+  #'   
+  #' # automatically selects appropriate method when specifying rr or degree explicitly
+  #' qgcomp(y ~ z + x1 + x2, expnms = c('x1', 'x2'), data=dat, q=2, family=binomial(), rr=FALSE)
   #' qgcomp(y ~ z + x1 + x2, expnms = c('x1', 'x2'), data=dat, q=2, family=binomial(), rr=TRUE)
   #' qgcomp(y ~ z + factor(x1) + factor(x2), degree=2, expnms = c('x1', 'x2'), data=dat, q=4, 
   #' family=binomial())
@@ -896,7 +1009,9 @@ qgcomp <- function(f,data=data,family=gaussian(),rr=TRUE,...){
   #'                 d=1.0*(tmg<0.1), x1=runif(N), x2=runif(N), z=runif(N))
   #' expnms=paste0("x", 1:2)
   #' f = survival::Surv(time, d)~x1 + x2
-  #' qgcomp(f, expnms = expnms, data = dat, B=10, MCsize=100)
+  #' qgcomp(f, expnms = expnms, data = dat)
+  #' # note if B or MCsize are set but the model is linear, an error will result
+  #' try(qgcomp(f, expnms = expnms, data = dat, B1=, MCsize))
   #' # note that in the survival models, MCsize should be set to a large number
   #' #  such that results are repeatable (within an error tolerance such as 2 significant digits)
   #' # if you run them under different  seed values
@@ -946,7 +1061,7 @@ qgcomp <- function(f,data=data,family=gaussian(),rr=TRUE,...){
 
 
 pointwisebound.boot <- function(x, alpha=0.05, pointwiseref=1){
-  #' @title estimating pointwise comparisons for qgcomp.boot objects
+  #' @title Estimating pointwise comparisons for qgcomp.boot objects
   #'
   #' @description Calculates: expected outcome (on the link scale), mean difference (link scale)
   #' and the standard error of the mean difference (link scale) for pointwise comparisons
@@ -984,8 +1099,9 @@ pointwisebound.boot <- function(x, alpha=0.05, pointwiseref=1){
   #' @examples
   #' set.seed(12)
   #' \donttest{
-  #' dat <- data.frame(x1=(x1 <- runif(50)), x2=runif(50), x3=runif(50), z=runif(50),
-  #'                   y=runif(50)+x1+x1^2)
+  #' n=100
+  #' dat <- data.frame(x1=(x1 <- runif(100)), x2=runif(100), x3=runif(100), z=runif(100),
+  #'                   y=runif(100)+x1+x1^2)
   #' ft <- qgcomp.boot(y ~ z + x1 + x2 + x3, expnms=c('x1','x2','x3'), data=dat, q=10)
   #' pointwisebound.boot(ft, alpha=0.05, pointwiseref=3)
   #' }
@@ -1015,7 +1131,7 @@ pointwisebound.boot <- function(x, alpha=0.05, pointwiseref=1){
 }
 
 pointwisebound.noboot <- function(x, alpha=0.05, pointwiseref = 1){
-  #' @title estimating pointwise comparisons for qgcomp.noboot objects
+  #' @title Estimating pointwise comparisons for qgcomp.noboot objects
   #'
   #' @description Calculates: expected outcome (on the link scale), mean difference (link scale)
   #' and the standard error of the mean difference (link scale) for pointwise comparisons
@@ -1109,7 +1225,7 @@ pointwisebound.noboot <- function(x, alpha=0.05, pointwiseref = 1){
 
 
 modelbound.boot <- function(x, alpha=0.05, pwonly=FALSE){
-  #' @title estimating qgcomp regression line confidence bounds
+  #' @title Estimating qgcomp regression line confidence bounds
   #'
   #' @description Calculates: expected outcome (on the link scale), and upper and lower
   #'  confidence intervals (both pointwise and simultaneous)
@@ -1146,7 +1262,7 @@ modelbound.boot <- function(x, alpha=0.05, pwonly=FALSE){
   #' \donttest{
   #' dat <- data.frame(x1=(x1 <- runif(50)), x2=runif(50), x3=runif(50), z=runif(50),
   #'                   y=runif(50)+x1+x1^2)
-  #' ft <- qgcomp.boot(y ~ z + x1 + x2 + x3, expnms=c('x1','x2','x3'), data=dat, q=9)
+  #' ft <- qgcomp.boot(y ~ z + x1 + x2 + x3, expnms=c('x1','x2','x3'), data=dat, q=5)
   #' modelbound.boot(ft, 0.05)
   #' }
   if(!x$bootstrap) stop("This function is only for qgcomp.boot objects")
@@ -1199,6 +1315,14 @@ coef.qgcompfit <- function(object, ...){
   object$coef
 }
 
+
+df.residual.qgcompfit <- function(object, ...){
+  #' @importFrom stats df.residual
+  #' @export
+  object$fit$df.residual
+}
+
+
 vcov.qgcompfit <- function(object, ...){
   #' @importFrom stats vcov
   #' @export
@@ -1238,8 +1362,8 @@ confint.qgcompfit <- function(object, ...){
 
 
 
-print.qgcompfit <- function(x, ...){
-  #' @title default printing method for a qgcompfit object
+print.qgcompfit <- function(x, showweights=TRUE, ...){
+  #' @title Default printing method for a qgcompfit object
   #' 
   #' @description Gives variable output depending on whether `qgcomp.noboot` or `qgcomp.boot`
   #' is called. For `qgcomp.noboot` will output final estimate of joint exposure
@@ -1251,6 +1375,7 @@ print.qgcompfit <- function(x, ...){
   #' 
   #' @param x "qgcompfit" object from `qgcomp`, `qgcomp.noboot` or `qgcomp.boot` 
   #' function
+  #' @param showweights logical: should weights be printed, if estimated?
   #' @param ... unused
   #' @seealso \code{\link[qgcomp]{qgcomp.noboot}}, \code{\link[qgcomp]{qgcomp.boot}}, and \code{\link[qgcomp]{qgcomp}}
   #' @concept variance mixtures
@@ -1265,17 +1390,17 @@ print.qgcompfit <- function(x, ...){
   #' print(obj2)
   fam <- x$fit$family$family
   if(is.null(fam)){
-    printZI(x)
+    printZI(x, showweights=showweights, ...)
     return(invisible(x))
   }
-  if(!is.null(x$pos.size)) {
+  if(!is.null(x$pos.size) & showweights) {
     cat(paste0("Scaled effect size (positive direction, sum of positive coefficients = ", signif(x$pos.size, 3) , ")\n"))
     if (length(x$pos.weights) > 0) {
       print(x$pos.weights, digits = 3)
     } else cat("None\n")
     cat("\n")
   }
-  if(!is.null(x$neg.size)) {
+  if(!is.null(x$neg.size) & showweights) {
     cat(paste0("Scaled effect size (negative direction, sum of negative coefficients = ", signif(-x$neg.size, 3) , ")\n"))
     if (length(x$neg.weights) > 0) {
       print(x$neg.weights, digits = 3)
@@ -1299,6 +1424,7 @@ print.qgcompfit <- function(x, ...){
   if (fam == "gaussian"){
     cat(paste0("Mixture slope parameters", ifelse(x$bootstrap, " (bootstrap CI)", " (Delta method CI)"), ":\n\n"))
     testtype = "t"
+    x$zstat = x$tstat
     rnm = c("(Intercept)", c(paste0('psi',1:max(1, length(coef(x))-1))))
   }
   if (fam == "cox"){
@@ -1312,12 +1438,12 @@ print.qgcompfit <- function(x, ...){
   }
   if(is.null(dim(x$ci.coef))){
     pdat <- cbind(Estimate=coef(x), "Std. Error"=sqrt(x$var.coef), "Lower CI"=x$ci.coef[1], "Upper CI"=x$ci.coef[2], "test"=x$zstat, "Pr(>|z|)"=x$pval)
-    colnames(pdat)[5] = eval(paste(testtype, "value"))
+    colnames(pdat)[which(colnames(pdat)=="test")] = eval(paste(testtype, "value"))
     rownames(pdat) <- rnm
     printCoefmat(pdat,has.Pvalue=TRUE,tst.ind=5L,signif.stars=FALSE, cs.ind=1L:2)
   } else{
     pdat <- cbind(Estimate=coef(x), "Std. Error"=sqrt(x$var.coef), "Lower CI"=x$ci.coef[,1], "Upper CI"=x$ci.coef[,2], "test"=x$zstat, "Pr(>|z|)"=x$pval)
-    colnames(pdat)[5] = eval(paste(testtype, "value"))
+    colnames(pdat)[which(colnames(pdat)=="test")] = eval(paste(testtype, "value"))
     rownames(pdat) <- rnm
     printCoefmat(pdat,has.Pvalue=TRUE,tst.ind=5L,signif.stars=FALSE, cs.ind=1L:2)
   }
@@ -1387,7 +1513,7 @@ plot.qgcompfit <- function(x,
                            flexfit=TRUE, 
                            pointwiseref = ceiling(x$q/2),
                            ...){
-  #' @title default plotting method for a qgcompfit object
+  #' @title Default plotting method for a qgcompfit object
   #'
   #' @description Plot a quantile g-computation object. For qgcomp.noboot, this function will
   #' create a butterfly plot of weights. For qgcomp.boot, this function will create
@@ -1421,6 +1547,7 @@ plot.qgcompfit <- function(x,
   #'                   y=runif(100)+x1+x1^2)
   #' ft <- qgcomp.noboot(y ~ z + x1 + x2 + x3, expnms=c('x1','x2','x3'), data=dat, q=4)
   #' ft
+  #' # display weights
   #' plot(ft)
   #' # examining fit
   #' plot(ft$fit, which=1) # residual vs. fitted is not straight line!
@@ -1530,10 +1657,11 @@ plot.qgcompfit <- function(x,
         stat_identity(aes(x=v, y=w), position = "identity", geom="bar", 
                       data=data.frame(w=x$neg.weights, v=names(x$neg.weights)),
                       fill=gray(1-poscolwt)) + 
-        scale_y_reverse(name="Negative weights", expand=c(0.000,0.000), breaks=c(0.25, 0.5, 0.75)) +
+        scale_y_continuous(trans="reverse", name="Negative weights", expand=c(0.000,0.000), breaks=c(0.25, 0.5, 0.75), limits=c(1,0),labels = waiver()) +
         scale_x_discrete(name="Variable", limits=nms, breaks=nms, labels=nms, drop=FALSE) +
         geom_hline(aes(yintercept=0)) + 
-        coord_flip(ylim=c(0,1)) + 
+        #coord_flip(ylim=c(0,1), expand = FALSE) + 
+        coord_flip() + 
         theme_butterfly_l
       if((length(x$neg.weights)>0 || length(x$pos.weights)>0)){
         maxstr = max(mapply(nchar, c(names(x$neg.weights), names(x$pos.weights))))
@@ -1818,7 +1946,7 @@ plot.qgcompfit <- function(x,
 }
 
 predict.qgcompfit <- function(object, expnms=NULL, newdata=NULL, type="response", ...){
-  #' @title default prediction method for a qgcompfit object (non-survival 
+  #' @title Default prediction method for a qgcompfit object (non-survival 
   #' outcomes only)
   #'
   #' @description get predicted values from a qgcompfit object, or make predictions
@@ -1861,7 +1989,7 @@ predict.qgcompfit <- function(object, expnms=NULL, newdata=NULL, type="response"
 }
 
 msm.predict <- function(object, newdata=NULL){
-  #' @title secondary prediction method for the (non-survival) qgcomp MSM.
+  #' @title Secondary prediction method for the (non-survival) qgcomp MSM.
   #' 
   #' @description this is an internal function called by 
   #'  \code{\link[qgcomp]{qgcomp.boot}},

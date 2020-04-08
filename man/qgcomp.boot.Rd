@@ -2,7 +2,7 @@
 % Please edit documentation in R/base.R
 \name{qgcomp.boot}
 \alias{qgcomp.boot}
-\title{quantile g-computation for continuous and binary outcomes}
+\title{Quantile g-computation for continuous and binary outcomes}
 \usage{
 qgcomp.boot(
   f,
@@ -11,7 +11,7 @@ qgcomp.boot(
   q = 4,
   breaks = NULL,
   id = NULL,
-  weights = NULL,
+  weights,
   alpha = 0.05,
   B = 200,
   rr = TRUE,
@@ -47,7 +47,8 @@ standard errors. Qgcomp.boot can be used for this, which will use bootstrap
 sampling of clusters/individuals to estimate cluster-appropriate standard
 errors via bootstrapping.}
 
-\item{weights}{not yet implemented}
+\item{weights}{"case weights" - passed to the "weight" argument of 
+\code{\link[stats]{glm}} or \code{\link[arm]{bayesglm}}}
 
 \item{alpha}{alpha level for confidence limit calculation}
 
@@ -120,6 +121,10 @@ qgcomp.boot(f=y ~ z + x1 + x2, expnms = c('x1', 'x2'), data=dat, q=4,
 qgcomp.boot(y ~ z + x1 + x2 + I(x1^2) + I(x2*x1), family="gaussian", 
  expnms = c('x1', 'x2'), data=dat, q=4, B=200)
  
+# generally non-linear/non-addiive underlying models lead to non-linear mixture slopes
+qgcomp.boot(y ~ z + x1 + x2 + I(x1^2) + I(x2*x1), family="gaussian", 
+ expnms = c('x1', 'x2'), data=dat, q=4, B=200, deg=2)
+ 
 # binary outcome
 dat <- data.frame(y=rbinom(50,1,0.5), x1=runif(50), x2=runif(50), z=runif(50))
 
@@ -130,7 +135,7 @@ qgcomp.noboot(y ~ z + x1 + x2, family="binomial", expnms = c('x1', 'x2'),
 #Marginal mixture OR (population average OR - in general, this will not equal the 
 # conditional mixture OR due to non-collapsibility of the OR)
 qgcomp.boot(y ~ z + x1 + x2, family="binomial", expnms = c('x1', 'x2'), 
-  data=dat, q=2, B=3)
+  data=dat, q=2, B=3, rr=FALSE)
   
 # Population average mixture RR
 qgcomp.boot(y ~ z + x1 + x2, family="binomial", expnms = c('x1', 'x2'), 
@@ -149,7 +154,8 @@ res2 = qgcomp.boot(y ~ z + x1 + I(x2==1) + I(x2==2) + I(x2==3),
   family="binomial", expnms = c('x1', 'x2'), data=dat, q=4, rr=TRUE, B=200, 
   degree=2)
 res2$fit  
-res2$msmfit  
+res2$msmfit  # correct point estimates, incorrect standard errors
+res2  # correct point estimates, correct standard errors
 plot(res2)
 # Log risk ratio per one IQR change in all exposures (not on quantile basis)
 dat$x1iqr <- dat$x1/with(dat, diff(quantile(x1, c(.25, .75))))
@@ -165,6 +171,30 @@ res2
 qgcomp.boot(y ~ z + x1iqr + I(x2iqr>0.1) + I(x2>0.4) + I(x2>0.9), 
   family="binomial", expnms = c('x1iqr', 'x2iqr'), data=dat, q=NULL, rr=TRUE, B=200, 
   degree=2, parallel=TRUE)
+
+
+# weighted model
+N=5000
+dat4 <- data.frame(id=1:N, x1=runif(N), x2=runif(N), z=runif(N))
+dat4$y <- with(dat4, rnorm(N, x1*z + z, 1))
+dat4$w=runif(N) + dat4$z*5
+qdata = quantize(dat4, expnms = c("x1", "x2"), q=4)$data
+# first equivalent models with no covariates
+qgcomp.noboot(f=y ~ x1 + x2, expnms = c('x1', 'x2'), data=dat4, q=4, family=gaussian())
+qgcomp.noboot(f=y ~ x1 + x2, expnms = c('x1', 'x2'), data=dat4, q=4, family=gaussian(), 
+              weights=w)
+
+set.seed(13)
+qgcomp.boot(f=y ~ x1 + x2, expnms = c('x1', 'x2'), data=dat4, q=4, family=gaussian(), 
+            weights=w)
+# using the correct model
+set.seed(13)
+qgcomp.boot(f=y ~ x1*z + x2, expnms = c('x1', 'x2'), data=dat4, q=4, family=gaussian(), 
+            weights=w, id="id")
+(qgcfit <- qgcomp.boot(f=y ~ z + x1 + x2, expnms = c('x1', 'x2'), data=dat4, q=4, 
+                       family=gaussian(), weights=w))
+qgcfit$fit
+summary(glm(y ~ z + x1 + x2, data = qdata, weights=w))
 }
 }
 \seealso{

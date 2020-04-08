@@ -2,7 +2,7 @@
 % Please edit documentation in R/base_surv.R
 \name{coxmsm.fit}
 \alias{coxmsm.fit}
-\title{marginal structural Cox model (MSM) fitting within quantile g-computation}
+\title{Marginal structural Cox model (MSM) fitting within quantile g-computation}
 \usage{
 coxmsm.fit(
   f,
@@ -12,7 +12,7 @@ coxmsm.fit(
   main = TRUE,
   degree = 1,
   id = NULL,
-  weights = NULL,
+  weights,
   cluster = NULL,
   MCsize = 10000,
   ...
@@ -44,7 +44,8 @@ is quadratic. Default=1)}
 observation (only needed if analyzing data with multiple observations per 
 id/cluster)}
 
-\item{weights}{not yet implemented}
+\item{weights}{"case weights" - passed to the "weight" argument of 
+\code{\link[survival]{coxph}}}
 
 \item{cluster}{not yet implemented}
 

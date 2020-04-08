@@ -1,3 +1,13 @@
+# qgcomp v2.3.0
+## Major changes
+- Documentation improvements
+- Added ability to perform weighted analysis for glm, survival, and zero inflated objects
+- Implement sample splitting to estimate partial effects via `qgcomp.partials`.
+
+## Bug fixes
+- Fixed bug in print function that missed linear fits
+- Fixed visual bug in plots introduced after updating ggplot 3.3.0  (instituted forced update of ggplot2 for users, sorry!)
+
 # qgcomp v2.2.2
 ## Major changes
 - Documentation improvements
