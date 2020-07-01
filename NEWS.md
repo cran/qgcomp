@@ -1,3 +1,17 @@
+# qgcomp v2.4.0
+## Major changes
+- Documentation improvements
+- Added hurdle models (qgcomp.hurdle.*boot functions), which address the excess in
+zeroes in a distribution slightly differently from zero inflated models (based on
+`pscl` package functions.)
+
+## Bug fixes
+- Package `broom` deprecates a dependency in an upcoming release. This dependency was removed
+- Bug with pointwisebound.noboot when non-exposure variables are encoded as factors
+- fixed bug in .split.cluster.data function that failed with most ID variable types
+- fixed R 4.0.0 bug where MCsize was ignored
+- fixed rare bug in hurdle/zi methods with non-quantized exposures, resulted in ridiculous runtimes if not errors
+
 # qgcomp v2.3.0
 ## Major changes
 - Documentation improvements

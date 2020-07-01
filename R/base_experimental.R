@@ -19,20 +19,21 @@
 }
 
 .split.cluster.data <- function(data, cluster="id", prop.train=0.4){
-  ids = sort(unique(data[[cluster]]))
-  trainids = sort(sample(1:length(ids), round(length(ids)*prop.train)))
-  validids = setdiff(ids,trainids)
-  
-  trainidx <- which(data[[cluster]] %in% trainids)
-  valididx <- which(data[[cluster]] %in% validids)
-  traindata <- data[trainidx,]
-  validdata <- data[valididx,]
-  list(
+ ids = sort(unique(data[[cluster]]))
+ trididx = sort(sample(1:length(ids), round(length(ids) * 
+                                               prop.train)))
+ trainids = ids[trididx]
+ validids = setdiff(ids, trainids)
+ trainidx <- which(data[[cluster]] %in% trainids)
+ valididx <- which(data[[cluster]] %in% validids)
+ traindata <- data[trainidx, ]
+ validdata <- data[valididx, ]
+ list(
     trainidx = trainidx,
     valididx = valididx,
     traindata = traindata,
     validdata = validdata
-  )
+ )
 }
 
 qgcomp.partials <- function(
@@ -108,7 +109,7 @@ qgcomp.partials <- function(
   #' splitres <- qgcomp:::qgcomp.partials(fun="qgcomp.noboot", f=y~., q=NULL, 
   #'     traindata=traindata,validdata=validdata, expnms=c("x1", "x2", "x3", "x4"))
   #' splitres
-  #' \donttest{
+  #' \dontrun{
   #' # under the null, both should give null results
   #' set.seed(123223)
   #' dat <- qgcomp:::.dgm_quantized(N=1000, coef=c(0,0,0,0), ncor=1)

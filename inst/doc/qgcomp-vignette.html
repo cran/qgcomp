@@ -302,7 +302,7 @@ system.time(qc.fit &lt;- qgcomp.noboot(y~.,dat=metals[,c(Xnm, &#39;y&#39;)], fam
 </code></pre>
 
 <pre><code>##    user  system elapsed 
-##   0.021   0.001   0.021
+##   0.019   0.002   0.027
 </code></pre>
 
 <pre><code class="r">#   user  system elapsed 
@@ -932,7 +932,7 @@ qc.survfit2
 <pre><code>## Mixture log(hazard ratio) (bootstrap CI):
 ## 
 ##      Estimate Std. Error Lower CI Upper CI Z value Pr(&gt;|z|)
-## psi1 -0.24020    0.10201 -0.44013 -0.04027 -2.3547  0.01854
+## psi1 -0.24020    0.25439  -0.7388   0.2584 -0.9442   0.3451
 </code></pre>
 
 <pre><code class="r"># testing proportional hazards (note that x=TRUE is not needed (and will cause an error if used))
@@ -975,7 +975,7 @@ qc.survfit3
 <pre><code>## Mixture log(hazard ratio) (bootstrap CI):
 ## 
 ##      Estimate Std. Error Lower CI Upper CI Z value Pr(&gt;|z|)
-## psi1 -0.19766    0.81940  -1.8036   1.4083 -0.2412   0.8094
+## psi1 -0.19766    0.59681  -1.3674  0.97206 -0.3312   0.7405
 </code></pre>
 
 <pre><code class="r">p3 = plot(qc.survfit3, suppressprint = TRUE) 
@@ -989,20 +989,14 @@ p3 + labs(title=&quot;Non-linear log(hazard ratio) overall, linear exposure spec
 <pre><code class="r">qc.survfit4 &lt;- qgcomp.cox.boot(Surv(disease_time, disease_state) ~ . + .^2,expnms=Xnm,
                          data=metals[,c(Xnm, &#39;disease_time&#39;, &#39;disease_state&#39;)], q=4, 
                          B=5, MCsize=1000, parallel=TRUE, degree=2)
-</code></pre>
-
-<pre><code>## Warning in fitter(X, Y, istrat, offset, init, control, weights = weights, :
-## Loglik converged before variable 1,2 ; coefficient may be infinite.
-</code></pre>
-
-<pre><code class="r">qc.survfit4
+qc.survfit4
 </code></pre>
 
 <pre><code>## Mixture log(hazard ratio) (bootstrap CI):
 ## 
 ##      Estimate Std. Error Lower CI Upper CI Z value Pr(&gt;|z|)
-## psi1 -2.87367   17.37419  -36.926   31.179 -0.1654   0.8686
-## psi2  0.87788    5.93309  -10.751   12.507  0.1480   0.8824
+## psi1 -2.87367    6.02082 -14.6742   8.9269 -0.4773   0.6332
+## psi2  0.87788    1.84526  -2.7388   4.4945  0.4758   0.6343
 </code></pre>
 
 <pre><code class="r"># examining the overall hazard ratio as a function of overall exposure
@@ -1288,7 +1282,7 @@ covars = c(&#39;nitrate&#39;,&#39;nitrite&#39;,&#39;sulfate&#39;,&#39;ph&#39;, &
 <h2>References</h2>
 
 <p>Alexander P. Keil, Jessie P. Buckley, Katie M. O’Brien, Kelly K. Ferguson, Shanshan Zhao,
-Alexandra J. White. A quantile-based g-computation approach to addressing the effects of exposure mixtures. <a href="https://arxiv.org/abs/1902.04200">https://arxiv.org/abs/1902.04200</a> </p>
+Alexandra J. White. A quantile-based g-computation approach to addressing the effects of exposure mixtures. <a href="https://doi.org/10.1289/EHP5838">https://doi.org/10.1289/EHP5838</a> </p>
 
 <h2>Acknowledgments</h2>
 
