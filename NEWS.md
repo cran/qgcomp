@@ -1,3 +1,12 @@
+# qgcomp v2.5.0
+## Major changes
+- Documentation improvements
+- Added `split_data` function to assist with inference from data adaptive procedures (such as qgcomp.partials) and model selection
+
+## Minor changes
+- Removed "experimental" tags on Poisson family, Zero inflated models
+- Added smarter "expnms" default to `predict.qgcompfit` function with new data
+
 # qgcomp v2.4.0
 ## Major changes
 - Documentation improvements

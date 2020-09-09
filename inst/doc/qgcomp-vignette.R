@@ -346,3 +346,42 @@ covars = c('nitrate','nitrite','sulfate','ph', 'total_alkalinity','total_hardnes
 (qc.fit.essential <- qgcomp.noboot(y~.,dat=metals[,c(Xnm, covars, 'y')], expnms=essentialXnm, family=gaussian()))
 (qc.fit.nonessential <- qgcomp.noboot(y~.,dat=metals[,c(Xnm, covars, 'y')], expnms=nonessentialXnm, family=gaussian()))
 
+## ----md1----------------------------------------------------------------------
+Xnm <- c(
+    'arsenic','barium','cadmium','calcium','chromium','copper',
+    'iron','lead','magnesium','manganese','mercury','selenium','silver',
+    'sodium','zinc'
+)
+covars = c('nitrate','nitrite','sulfate','ph', 'total_alkalinity','total_hardness')
+asmiss = metals
+set.seed(1232)
+asmiss$arsenic = ifelse(runif(nrow(metals))>0.7, NA, asmiss$arsenic)
+cc = asmiss[complete.cases(asmiss[,c(Xnm, covars, "y")]),] # complete.cases gives a logical index to subset rows
+dim(metals) # [1] 452  26
+dim(cc) # [1] 320  26
+
+# complete case analysis
+qc.base <- qgcomp.noboot(y~.,expnms=Xnm, dat=metals[,c(Xnm, covars, 'y')], family=gaussian())
+
+qc.cc  <- qgcomp.noboot(y~.,expnms=Xnm, dat=cc[,c(Xnm, covars, 'y')], family=gaussian())
+
+qc.cc2 <- qgcomp.noboot(y~.,expnms=Xnm, dat=asmiss[,c(Xnm, covars, 'y')], family=gaussian())
+
+
+cat("Full data\n")
+qc.base
+
+cat("Complete case analyses\n")
+cat("  #1 explicitly remove observations with missing values\n")
+qc.cc
+cat("  #1 rely on R handling of NA values\n")
+qc.cc2
+
+# calculation of arsenic quantiles is identical
+all.equal(qc.cc$qx$arsenic_q, qc.cc2$qx$arsenic_q[complete.cases(qc.cc2$qx$arsenic_q)])
+# all are equal
+
+all.equal(qc.cc$qx$cadmium_q, qc.cc2$qx$cadmium_q[complete.cases(qc.cc2$qx$arsenic_q)])
+# not equal
+
+

@@ -302,7 +302,7 @@ system.time(qc.fit &lt;- qgcomp.noboot(y~.,dat=metals[,c(Xnm, &#39;y&#39;)], fam
 </code></pre>
 
 <pre><code>##    user  system elapsed 
-##   0.019   0.002   0.027
+##   0.019   0.001   0.026
 </code></pre>
 
 <pre><code class="r">#   user  system elapsed 
@@ -932,7 +932,7 @@ qc.survfit2
 <pre><code>## Mixture log(hazard ratio) (bootstrap CI):
 ## 
 ##      Estimate Std. Error Lower CI Upper CI Z value Pr(&gt;|z|)
-## psi1 -0.24020    0.25439  -0.7388   0.2584 -0.9442   0.3451
+## psi1 -0.24020    0.24896 -0.72816  0.24776 -0.9648   0.3346
 </code></pre>
 
 <pre><code class="r"># testing proportional hazards (note that x=TRUE is not needed (and will cause an error if used))
@@ -975,7 +975,7 @@ qc.survfit3
 <pre><code>## Mixture log(hazard ratio) (bootstrap CI):
 ## 
 ##      Estimate Std. Error Lower CI Upper CI Z value Pr(&gt;|z|)
-## psi1 -0.19766    0.59681  -1.3674  0.97206 -0.3312   0.7405
+## psi1 -0.19766    0.42757  -1.0357  0.64036 -0.4623   0.6439
 </code></pre>
 
 <pre><code class="r">p3 = plot(qc.survfit3, suppressprint = TRUE) 
@@ -995,8 +995,8 @@ qc.survfit4
 <pre><code>## Mixture log(hazard ratio) (bootstrap CI):
 ## 
 ##      Estimate Std. Error Lower CI Upper CI Z value Pr(&gt;|z|)
-## psi1 -2.87367    6.02082 -14.6742   8.9269 -0.4773   0.6332
-## psi2  0.87788    1.84526  -2.7388   4.4945  0.4758   0.6343
+## psi1 -2.87367    5.20586 -13.0770   7.3296 -0.5520   0.5809
+## psi2  0.87788    1.82738  -2.7037   4.4595  0.4804   0.6309
 </code></pre>
 
 <pre><code class="r"># examining the overall hazard ratio as a function of overall exposure
@@ -1279,10 +1279,158 @@ covars = c(&#39;nitrate&#39;,&#39;nitrite&#39;,&#39;sulfate&#39;,&#39;ph&#39;, &
 
 <p>As shown from these results, the essential metals and minerals demonstrate an overall positive joint association with the outcome (controlling for non-essentials), wheras the partial effect of non-essential metals and minerals is close to null. This is close to the interpretation of the data adaptive selection of partial effects demonstrated above, but is much more interpretable in terms of how we might intervene (e.g. increase consumption of foods that are higher in essential metals and minerals).</p>
 
+<h2>Missing data, limits of detection and multiple imputation</h2>
+
+<p>When carrying out data analysis using quantile g-computation, on can address missing data in much the same way as in standard regression analyses. A common approach is complete case analysis. While regression functions in R will automatically carry out complete case analyses when variables take on the value <code>NA</code> (denoting missingness in R), when using quantile g-computation it is encouraged that one explicitly create the complete case dataset explicitly and use that complete case dataset. Using the pre-installed R packages, this can be accomplished with the <code>complete.cases</code> function. </p>
+
+<p>The reason for this recommendation is that, while the regression analysis will be performed on complete cases (i.e. observations with non-missing values for all variables in the model), the calculation of quantiles for each exposures is done on an exposure-by-exposure basis, which can lead to numerical differences when explicitly using a dataset restricted to complete cases versus relying on automatically removing observations with <code>NA</code> values during analysis. </p>
+
+<p>Here is an artificial example that demonstrates the differences. Three analyses are run: one with the full data, one with complete case data (complete case analysis #1), and one with data in which <code>arsenic</code> has been randomly set to <code>NA</code> (complete case analysis #2).</p>
+
+<p>There are numeric differnces between the two complete case analyses, which can be traced to differences in the &ldquo;quantized&rdquo; exposures (other than arsenic) in the two approaches, which can be found by the <code>qx</code> data frame that is part of a <code>qgcompfit</code> object.</p>
+
+<pre><code class="r">Xnm &lt;- c(
+    &#39;arsenic&#39;,&#39;barium&#39;,&#39;cadmium&#39;,&#39;calcium&#39;,&#39;chromium&#39;,&#39;copper&#39;,
+    &#39;iron&#39;,&#39;lead&#39;,&#39;magnesium&#39;,&#39;manganese&#39;,&#39;mercury&#39;,&#39;selenium&#39;,&#39;silver&#39;,
+    &#39;sodium&#39;,&#39;zinc&#39;
+)
+covars = c(&#39;nitrate&#39;,&#39;nitrite&#39;,&#39;sulfate&#39;,&#39;ph&#39;, &#39;total_alkalinity&#39;,&#39;total_hardness&#39;)
+asmiss = metals
+set.seed(1232)
+asmiss$arsenic = ifelse(runif(nrow(metals))&gt;0.7, NA, asmiss$arsenic)
+cc = asmiss[complete.cases(asmiss[,c(Xnm, covars, &quot;y&quot;)]),] # complete.cases gives a logical index to subset rows
+dim(metals) # [1] 452  26
+</code></pre>
+
+<pre><code>## [1] 452  26
+</code></pre>
+
+<pre><code class="r">dim(cc) # [1] 320  26
+</code></pre>
+
+<pre><code>## [1] 320  26
+</code></pre>
+
+<pre><code class="r"># complete case analysis
+qc.base &lt;- qgcomp.noboot(y~.,expnms=Xnm, dat=metals[,c(Xnm, covars, &#39;y&#39;)], family=gaussian())
+
+qc.cc  &lt;- qgcomp.noboot(y~.,expnms=Xnm, dat=cc[,c(Xnm, covars, &#39;y&#39;)], family=gaussian())
+
+qc.cc2 &lt;- qgcomp.noboot(y~.,expnms=Xnm, dat=asmiss[,c(Xnm, covars, &#39;y&#39;)], family=gaussian())
+
+
+cat(&quot;Full data\n&quot;)
+</code></pre>
+
+<pre><code>## Full data
+</code></pre>
+
+<pre><code class="r">qc.base
+</code></pre>
+
+<pre><code>## Scaled effect size (positive direction, sum of positive coefficients = 0.441)
+##  calcium   barium     iron  arsenic   silver chromium  cadmium     zinc 
+##  0.76111  0.06133  0.05854  0.02979  0.02433  0.02084  0.01395  0.01195 
+##  mercury   sodium 
+##  0.01130  0.00688 
+## 
+## Scaled effect size (negative direction, sum of negative coefficients = -0.104)
+##    copper magnesium      lead manganese  selenium 
+##   0.44654   0.42124   0.09012   0.03577   0.00631 
+## 
+## Mixture slope parameters (Delta method CI):
+## 
+##              Estimate Std. Error Lower CI Upper CI t value  Pr(&gt;|z|)
+## (Intercept) -0.460408   0.134007 -0.72306 -0.19776 -3.4357 0.0006477
+## psi1         0.337539   0.089358  0.16240  0.51268  3.7774 0.0001805
+</code></pre>
+
+<pre><code class="r">cat(&quot;Complete case analyses\n&quot;)
+</code></pre>
+
+<pre><code>## Complete case analyses
+</code></pre>
+
+<pre><code class="r">cat(&quot;  #1 explicitly remove observations with missing values\n&quot;)
+</code></pre>
+
+<pre><code>##   #1 explicitly remove observations with missing values
+</code></pre>
+
+<pre><code class="r">qc.cc
+</code></pre>
+
+<pre><code>## Scaled effect size (positive direction, sum of positive coefficients = 0.48)
+##  calcium     iron     zinc chromium   silver     lead   barium  arsenic 
+##  0.78603  0.07255  0.04853  0.03315  0.02555  0.01405  0.01285  0.00728 
+## 
+## Scaled effect size (negative direction, sum of negative coefficients = -0.117)
+##    copper magnesium   cadmium   mercury manganese    sodium  selenium 
+##   0.52200   0.23808   0.09082   0.06570   0.04105   0.03921   0.00315 
+## 
+## Mixture slope parameters (Delta method CI):
+## 
+##              Estimate Std. Error Lower CI Upper CI t value  Pr(&gt;|z|)
+## (Intercept) -0.509402   0.145471 -0.79452 -0.22428 -3.5017 0.0005315
+## psi1         0.362582   0.096696  0.17306  0.55210  3.7497 0.0002119
+</code></pre>
+
+<pre><code class="r">cat(&quot;  #1 rely on R handling of NA values\n&quot;)
+</code></pre>
+
+<pre><code>##   #1 rely on R handling of NA values
+</code></pre>
+
+<pre><code class="r">qc.cc2
+</code></pre>
+
+<pre><code>## Scaled effect size (positive direction, sum of positive coefficients = 0.493)
+##  calcium     iron     zinc chromium   barium   silver     lead selenium 
+##  0.76495  0.07191  0.04852  0.03489  0.02151  0.02119  0.01912  0.01444 
+##  arsenic 
+##  0.00348 
+## 
+## Scaled effect size (negative direction, sum of negative coefficients = -0.12)
+##    copper magnesium    sodium manganese   cadmium   mercury 
+##    0.5338    0.2139    0.0965    0.0853    0.0501    0.0204 
+## 
+## Mixture slope parameters (Delta method CI):
+## 
+##             Estimate Std. Error Lower CI Upper CI t value  Pr(&gt;|z|)
+## (Intercept) -0.51673    0.15001 -0.81074 -0.22273 -3.4447 0.0006520
+## psi1         0.37249    0.10014  0.17621  0.56876  3.7196 0.0002376
+</code></pre>
+
+<pre><code class="r"># calculation of arsenic quantiles is identical
+all.equal(qc.cc$qx$arsenic_q, qc.cc2$qx$arsenic_q[complete.cases(qc.cc2$qx$arsenic_q)])
+</code></pre>
+
+<pre><code>## [1] TRUE
+</code></pre>
+
+<pre><code class="r"># all are equal
+
+all.equal(qc.cc$qx$cadmium_q, qc.cc2$qx$cadmium_q[complete.cases(qc.cc2$qx$arsenic_q)])
+</code></pre>
+
+<pre><code>## [1] &quot;Mean relative difference: 0.3823529&quot;
+</code></pre>
+
+<pre><code class="r"># not equal
+</code></pre>
+
+<h3>Limits of detection</h3>
+
+<p>A common form of missing data that occurs in mixtures are exposure values that are missing due to being below the limit of detection. A common approach to such missing data is imputation, either through filling in small numeric values in place of the missing values, or in a more formal multiple imputation from a parametric model. Notably, with quantile g-computation, if the proportion of values below the limit of detection is below 1/q (the number of quantiles), all appropriate missing data approaches will yield the same answer because such values would be known to be in the lowest category. Thus, if one has 3 exposures each with 10% of the values below the limit of detection, one can impute small values below those limits (a common approach is the limit of detection divided by the square root of 2) and proceed with quantile g-computation on the imputed data. This analysis leverages the fact that, even if a value below the limit of detection cannot be known with certainty, the category score used in quantile g-computatoin is known with certainty. In cases with more than 1/q% measurements below the LOD, the packages <code>qgcomp</code> comes with a convenience function <code>mice.impute.leftcenslognorm</code> that can be used to impute values below the limit of detection from a left censored log-normal regression model.</p>
+
+<h3>Multiple imputation</h3>
+
+<p>Multiple imputation uses multiple datasets with different imputed values for each missing value across datasets. Separate analyeses are performed on each of these datasets, and the results are combined using standard rules. The function <code>mice.impute.leftcenslognorm</code> can be interfaced with the <code>mice</code> package for efficient programming of multiple imputation based analysis with quantile g-computation. Examples cannot be included here without explicitly installing the <code>mice</code> package, but an example can be seen in the help file for <code>mice.impute.leftcenslognorm</code>.</p>
+
 <h2>References</h2>
 
 <p>Alexander P. Keil, Jessie P. Buckley, Katie M. O’Brien, Kelly K. Ferguson, Shanshan Zhao,
-Alexandra J. White. A quantile-based g-computation approach to addressing the effects of exposure mixtures. <a href="https://doi.org/10.1289/EHP5838">https://doi.org/10.1289/EHP5838</a> </p>
+Alexandra J. White. A quantile-based g-computation approach to addressing the effects of exposure mixtures. <https:// doi.org/10.1289/EHP5838> </p>
 
 <h2>Acknowledgments</h2>
 
