@@ -4,9 +4,8 @@ zimsm.fit.control <- function(
 ){
   #' @title Control of fitting parameters for zero inflated MSMs
   #' @description this is an internal function called by 
-  #'  \code{\link[qgcomp]{qgcomp.zi.boot}},
-  #'  but is documented here for clarity. Generally, users will not need to call
-  #'  this function directly.
+  #'  \code{\link[qgcomp]{qgcomp.zi.boot}}, but is documented here for clarity. 
+  #'  Generally, users will not need to call this function directly.
   #' @details Provides fine control over zero inflated MSM fitting
   #' @param predmethod character in c("components", "catprobs"). "components" simulates from the 
   #' model parameters directly while "catprobs" simulates outcomes from the category specific 
@@ -66,7 +65,7 @@ zimsm.fit <- function(
   #'  and expected outcomes under g-computation and the MSM
   #' @param degree polynomial bases for marginal model (e.g. degree = 2
   #'  allows that the relationship between the whole exposure mixture and the outcome
-  #'  is quadratic. Default=1)
+  #'  is quadratic. Default=1 )
   #' @param id (optional) NULL, or variable name indexing individual units of 
   #' observation (only needed if analyzing data with multiple observations per 
   #' id/cluster)
@@ -274,7 +273,8 @@ qgcomp.zi.noboot <- function(f,
   #' # Warning message:
   #' # In eval(family$initialize) : non-integer #successes in a binomial glm!
   #' 
-
+  if(bayes) stop("Bayesian zero inflated models not yet implemented")
+  
   # list containers
   estb <- vcov_mod <- seb <- tstat <- pvalz <- allterms <- containmix <- pos.weights <- neg.weights <- 
     pos.coef <- neg.coef <- pos.psi <- neg.psi <- pos.size <- neg.size <- wcoef <- ci <- tstat <- list()
@@ -333,11 +333,6 @@ qgcomp.zi.noboot <- function(f,
   if(!bayes) fit <- zeroinfl(newform, data = qdata, 
                              weights=weights, 
                              ...)
-  if(bayes){
-    stop("bayesian zero inflated models not yet implemented")
-    #requireNamespace("arm")
-    #fit <- bayesglm(f, data = qdata[,!(names(qdata) %in% id), drop=FALSE], ...)
-  }
   mod <- summary(fit)
   if((length(setdiff(expnms, rownames(mod$coefficients$count)))>0 & containmix$count) |
      (length(setdiff(expnms, rownames(mod$coefficients$zero)))>0 & containmix$zero)
@@ -405,8 +400,8 @@ qgcomp.zi.noboot <- function(f,
     res$zstat <- tstat
     res$pval <- pvalz
   #}
-  attr(res, "class") <- "qgcompfit"
-  res
+    attr(res, "class") <- c("ziqgcompfit", "qgcompfit")
+    res
 }
 
 qgcomp.zi.boot <- function(f, 
@@ -438,9 +433,9 @@ qgcomp.zi.boot <- function(f,
   #' computational computational burden due to the need for non-parametric bootstrapping.
   #'  
   #' @details Zero-inflated count models allow excess zeros in standard count outcome (e.g.
-  #'  Poisson distributed outcomes). Such models have two components: 1) the probability of
+  #'  Poisson distributed outcomes). Such models have two components: 1 ) the probability of
   #'  arising from a degenerate distribution at zero (versus arising from a count distribution)
-  #'  and 2) the rate parameter of a count distribution. Thus, one has the option of allowing
+  #'  and 2 ) the rate parameter of a count distribution. Thus, one has the option of allowing
   #'  exposure and covariate effects on the zero distribution, the count distribution, or both. 
   #'  The zero distribution parameters correspond to log-odds ratios for the probability of arising
   #'  from the zero distribution. Count distribution parameters correspond to log-rate-ratio parameters. 
@@ -487,7 +482,7 @@ qgcomp.zi.boot <- function(f,
   #'  though it is set lower in examples to improve run-time).
   #' @param degree polynomial basis function for marginal model (e.g. degree = 2
   #'  allows that the relationship between the whole exposure mixture and the outcome
-  #'  is quadratic.
+  #'  is quadratic.)
   #' @param seed integer or NULL: random number seed for replicable bootstrap results
   #' @param bayes not currently implemented.
   #' @param parallel use (safe) parallel processing from the future and future.apply packages
@@ -552,6 +547,8 @@ qgcomp.zi.boot <- function(f,
   #'                    degree=2, MCsize=200, dist="poisson")
   #' res2
   #' }
+  if(bayes) stop("Bayesian zero inflated models not yet implemented")
+
   if(is.null(seed)) seed = round(runif(1, min=0, max=1e8))
   #message("qgcomp.zi.boot function is still experimental. Please use with caution and be sure results are reasonable.\n")      
   # list containers
@@ -708,6 +705,8 @@ qgcomp.zi.boot <- function(f,
   
   pvalz <- lapply(tstat, function(x) 2 - 2 * pnorm(abs(x)))
   hats = t(bootsamps[-c(1:(maxcidx)),])
+  hats.ll <- apply(hats, 2, function(x) quantile(x, 0.025))
+  hats.ul <- apply(hats, 2, function(x) quantile(x, 0.975))
   cov.yhat = cov(hats)
   
   qx <- qdata[, expnms]
@@ -732,12 +731,104 @@ qgcomp.zi.boot <- function(f,
     bootstrap=TRUE,
     cov.yhat=cov.yhat,
     y.expected=msmfit$Ya, y.expectedmsm=msmfit$Yamsm, index=msmfit$A,
+    y.ll = hats.ll, y.ul = hats.ul,
     bootsamps = bootsamps,
     alpha=alpha
   )
   res$zstat <- tstat
   res$pval <- pvalz
-  attr(res, "class") <- "qgcompfit"
+  attr(res, "class") <- c("ziqgcompfit", "qgcompfit")
   res
 }
 
+
+#printing of zero-inflated results
+
+printZI <- function(x, showweights=TRUE, ...){
+  if(class(x$fit) %in% c("zeroinfl", "hurdle")){
+    if(!is.null(x$pos.size$count) & showweights) {
+      cat("Prob(Y ~ count):\n")
+      cat(paste0("Scaled effect size (positive direction, sum of positive coefficients = ", signif(x$pos.size$count, 3) , ")\n"))
+      if (length(x$pos.weights$count) > 0) {
+        print(x$pos.weights$count, digits = 3)
+      } else cat("None\n")
+      cat("\n")
+    }
+    if(!is.null(x$neg.size$count) & showweights) {
+      cat(paste0("Scaled effect size (negative direction, sum of negative coefficients = ", signif(-x$neg.size$count, 3) , ")\n"))
+      if (length(x$neg.weights$count) > 0) {
+        print(x$neg.weights$count, digits = 3)
+      } else cat("None\n")
+      cat("\n")
+    }
+    if(!is.null(x$pos.size$zero) & showweights) {
+      cat("Prob(Y ~ zero/count):\n")
+      cat(paste0("Scaled effect size (positive direction, sum of positive coefficients = ", signif(x$pos.size$zero, 3) , ")\n"))
+      if (length(x$pos.weights$zero) > 0) {
+        print(x$pos.weights$zero, digits = 3)
+      } else cat("None\n")
+      cat("\n")
+    }
+    if(!is.null(x$neg.size$zero) & showweights) {
+      cat(paste0("Scaled effect size (negative direction, sum of negative coefficients = ", signif(-x$neg.size$zero, 3) , ")\n"))
+      if (length(x$neg.weights$zero) > 0) {
+        print(x$neg.weights$zero, digits = 3)
+      } else cat("None\n")
+      cat("\n")
+    }
+    
+    if(x$fit$dist[[1]] %in% c("poisson", "negbin")){
+      estimand <- 'OR/RR'
+      cat(paste0("Mixture log(",estimand,")", ifelse(x$bootstrap, " (bootstrap CI)", " (Delta method CI)"), ":\n\n"))
+    }
+    #if(x$fit$dist=="gaussian"){
+    #  estimand <- 'log(OR)/mean diff'
+    #  cat(paste0("Mixture ",estimand,"", ifelse(x$bootstrap, " (bootstrap CI)", " (Delta method CI)"), ":\n\n"))
+    #}
+    testtype = "Z"
+    
+    pdat <- list()
+    for(modtype in names(x$psi)){
+      pdat[[modtype]] <- cbind(Estimate=coef(x)[[modtype]], "Std. Error"=sqrt(x$var.coef[[modtype]]), 
+                               "Lower CI"=x$ci.coef[[modtype]][,1], "Upper CI"=x$ci.coef[[modtype]][,2], 
+                               "Z value"=x$zstat[[modtype]], "Pr(>|z|)"=x$pval[[modtype]])
+      #colnames(pdat[[modtype]])[which(colnames(pdat)=="test")] = eval(paste(testtype, "value"))
+      #colnames(pdat[[modtype]])[5] = eval(paste(testtype, "value"))
+      numpsi = length(x$psi[[modtype]])
+      if(numpsi>0) rnm = c("(Intercept)", c(paste0('psi',1:max(1, numpsi))))
+      if(numpsi==0) rnm = c("(Intercept)")
+      rownames(pdat[[modtype]]) <- rnm
+      cat(paste0("Prob(Y ~ ", modtype,"):\n"))
+      printCoefmat(pdat[[modtype]],has.Pvalue=TRUE,tst.ind=5L,signif.stars=FALSE, cs.ind=1L:2)
+    }
+  }
+}
+
+summaryZI <- function(x){
+  if(class(x$fit) %in% c("zeroinfl", "hurdle")){
+    if(x$fit$dist[[1]] %in% c("poisson", "negbin")){
+      estimand <- 'OR/RR'
+      cat(paste0("Mixture log(",estimand,")", ifelse(x$bootstrap, " (bootstrap CI)", " (Delta method CI)"), ":\n\n"))
+    }
+    #if(x$fit$dist=="gaussian"){
+    #  estimand <- 'log(OR)/mean diff'
+    #  cat(paste0("Mixture ",estimand,"", ifelse(x$bootstrap, " (bootstrap CI)", " (Delta method CI)"), ":\n\n"))
+    #}
+    testtype = "Z"
+    
+    pdat <- list()
+    for(modtype in names(x$psi)){
+      pdat[[modtype]] <- cbind(Estimate=coef(x)[[modtype]], "Std. Error"=sqrt(x$var.coef[[modtype]]), 
+                               "Lower CI"=x$ci.coef[[modtype]][,1], "Upper CI"=x$ci.coef[[modtype]][,2], 
+                               "test"=x$zstat[[modtype]], "Pr(>|z|)"=x$pval[[modtype]])
+      colnames(pdat[[modtype]])[5] = eval(paste(testtype, "value"))
+      numpsi = length(x$psi[[modtype]])
+      if(numpsi>0) rnm = c("(Intercept)", c(paste0('psi',1:max(1, numpsi))))
+      if(numpsi==0) rnm = c("(Intercept)")
+      rownames(pdat[[modtype]]) <- rnm
+      cat(paste0("Prob(Y ~ ", modtype,"):\n"))
+      #printCoefmat(pdat[[modtype]],has.Pvalue=TRUE,tst.ind=5L,signif.stars=FALSE, cs.ind=1L:2)
+    }
+  }
+  list(coeffients=pdat)
+}

@@ -54,7 +54,7 @@ though it is set lower in examples to improve run-time).}
 
 \item{degree}{polynomial basis function for marginal model (e.g. degree = 2
 allows that the relationship between the whole exposure mixture and the outcome
-is quadratic.}
+is quadratic.)}
 
 \item{seed}{integer or NULL: random number seed for replicable bootstrap results}
 
@@ -92,9 +92,9 @@ computational computational burden due to the need for non-parametric bootstrapp
 }
 \details{
 Zero-inflated count models allow excess zeros in standard count outcome (e.g.
-Poisson distributed outcomes). Such models have two components: 1) the probability of
+Poisson distributed outcomes). Such models have two components: 1 ) the probability of
 arising from a degenerate distribution at zero (versus arising from a count distribution)
-and 2) the rate parameter of a count distribution. Thus, one has the option of allowing
+and 2 ) the rate parameter of a count distribution. Thus, one has the option of allowing
 exposure and covariate effects on the zero distribution, the count distribution, or both.
 The zero distribution parameters correspond to log-odds ratios for the probability of arising
 from the zero distribution. Count distribution parameters correspond to log-rate-ratio parameters.

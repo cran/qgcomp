@@ -1,3 +1,18 @@
+# qgcomp v2.6.0
+## Major changes
+- Added `cox.survcurve.boot` function to estimate survival curves from a qgcomp.cox.boot fit
+- Refactored plot code (changes should be invisible to users except bug fixes)
+
+## Minor changes
+- documentation improvements
+- Changed "pointwisebound.\*" and "modelbounds.\*" to give more sensible output
+
+## Bug fixes
+- Fix bug in tidy when using Cox model
+- Bug fixes in bounds calculation with binomial outcomes, which lead to incorrect bounds on plots
+- Fixed long running harmless and annoying print bug that confused "t" with "z"
+
+
 # qgcomp v2.5.0
 ## Major changes
 - Documentation improvements
