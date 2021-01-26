@@ -116,7 +116,7 @@ hurdlemsm.fit <- function(
 
   if(is.null(id)) {
     id = "id__"
-    qdata$id__ = 1:dim(qdata)[1]
+    qdata$id__ = seq_len(dim(qdata)[1])
   }
   # conditional outcome regression fit
   if(!bayes) fit <- hurdle(newform, data = qdata[,!(names(qdata) %in% id), drop=FALSE],
@@ -126,7 +126,7 @@ hurdlemsm.fit <- function(
   #if(fit$optim$convergence[1]!=0) warning("Conditional outcome regression model did not converge")
   ## get predictions (set exposure to 0,1,...,q-1)
   if(is.null(intvals)){
-    intvals = (1:length(table(qdata[expnms[1]]))) - 1
+    intvals = seq_len(length(table(qdata[expnms[1]]))) - 1
   }
   predit <- function(idx, newdata){
     newdata[,expnms] <- idx
@@ -156,7 +156,7 @@ hurdlemsm.fit <- function(
                                         replace = TRUE
   )))
   names(newids) <- id
-  newdata <- merge(qdata,newids, by=id, all.x=FALSE, all.y=TRUE)[1:MCsize,]
+  newdata <- merge(qdata,newids, by=id, all.x=FALSE, all.y=TRUE)[seq_len(MCsize),]
   predmat <- lapply(intvals, predit, newdata=newdata)
   msmdat <- data.frame(
    # weights = rep(newdata$weights, times=length(table(qdata[expnms[1]])))
@@ -320,7 +320,7 @@ qgcomp.hurdle.noboot <- function(f,
   if(is.null(id)) {
     # not yet implemented
     id = "id__"
-    qdata$id__ = 1:dim(qdata)[1]
+    qdata$id__ = seq_len(dim(qdata)[1])
   }
   for(modtype in c("count", "zero")){
     containmix[[modtype]] = all(expnms %in% allterms[[modtype]])
@@ -617,14 +617,14 @@ qgcomp.hurdle.boot <- function(f,
     } else{
       nvals <- q
     }
-    intvals <- (1:nvals)-1
+    intvals <- seq_len(nvals)-1
   } else {
     # if( is.null(breaks) & is.null(q)) # also includes NA
     qdata <- data
     # if no transformation is made (no quantiles, no breaks given)
     # then draw distribution values from quantiles of all the exposures
     # pooled together
-    # TODO: allow user specification of this
+    # : allow user specification of this
     message("\nNote: using quantiles of all exposures combined in order to set 
           proposed intervention values for overall effect (25th, 50th, 75th %ile)
         You can ensure this is valid by scaling all variables in expnms to have similar ranges.")
@@ -633,7 +633,7 @@ qgcomp.hurdle.boot <- function(f,
   }
   if(is.null(id)) {
     id <- "id__"
-    qdata$id__ <- 1:dim(qdata)[1]
+    qdata$id__ <- seq_len(dim(qdata)[1])
   }
   ###
   msmfit <- hurdlemsm.fit(newform, qdata, intvals, expnms, main=TRUE,
@@ -665,7 +665,7 @@ qgcomp.hurdle.boot <- function(f,
                    MCsize=MCsize, containmix=containmix, 
                    bayes=FALSE, x=FALSE, msmcontrol=msmcontrol, ...)
     classprob = suppressWarnings(predict(ft$msmfit, type="prob"))
-    # todo: check that this works if class probabilities can be zero in certain bootstrap iterations
+    # : check that this works if class probabilities can be zero in certain bootstrap iterations
     ncats = ncol(classprob)
     yhat = apply(classprob[,], 1, function(x) -1+which.max(rmultinom(1, 1, x)))
 
@@ -676,24 +676,26 @@ qgcomp.hurdle.boot <- function(f,
   }
   set.seed(seed)
   if(parallel){
-    Sys.setenv(R_FUTURE_SUPPORTSMULTICORE_UNSTABLE="quiet")
-    future::plan(strategy = future::multiprocess)
+    #Sys.setenv(R_FUTURE_SUPPORTSMULTICORE_UNSTABLE="quiet")
+    future::plan(strategy = future::multisession)
     #testenv <- list2env(list(qdata=qdata, weights=weights))
-    bootsamps <- future.apply::future_sapply(X=1:B, FUN=psi.only,f=newform, qdata=qdata, intvals=intvals, 
+    bootsamps <- future.apply::future_lapply(X=seq_len(B), FUN=psi.only,f=newform, qdata=qdata, intvals=intvals, 
                                              expnms=expnms, degree=degree, nids=nids, id=id, 
                                              weights=qdata$weights,
                                              MCsize=MCsize,
+                                             future.seed=TRUE,
                                              ...)
     
-    future::plan(future::sequential)
+    future::plan(strategy = future::transparent)
   }else{
-    bootsamps <- sapply(X=1:B, FUN=psi.only,f=newform, qdata=qdata, intvals=intvals, 
+    bootsamps <- lapply(X=seq_len(B), FUN=psi.only,f=newform, qdata=qdata, intvals=intvals, 
                         expnms=expnms, degree=degree, nids=nids, id=id, 
                         weights=weights,
                         MCsize=MCsize,
                         ...)
     
   }
+  bootsamps = do.call("cbind", bootsamps)
   maxcidx=1
   for(modtype in names(containmix)){
       cidx = grep(paste0("^",modtype), names(unlist(msmfit$msmfit$coefficients)))
@@ -706,7 +708,7 @@ qgcomp.hurdle.boot <- function(f,
   }
   
   pvalz <- lapply(tstat, function(x) 2 - 2 * pnorm(abs(x)))
-  hats = t(bootsamps[-c(1:(maxcidx)),])
+  hats = t(bootsamps[-c(seq_len(maxcidx)),])
   cov.yhat = cov(hats)
   
   qx <- qdata[, expnms]

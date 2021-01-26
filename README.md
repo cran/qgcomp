@@ -1,4 +1,4 @@
-`qgcomp` v2.6.0
+`qgcomp` v2.7.0
 
 
 
@@ -175,3 +175,5 @@
 
 See the vignette which is included with the `qgcomp` R package, and is accessible in 
 R via `vignette("qgcomp-vignette", package="qgcomp")`
+
+<center><img src="inst/fig/fighex.png" alt="" width="100"/></center>

@@ -165,7 +165,7 @@ coxmsm.fit <- function(
 
   if(is.null(id)) {
     id = "id__"
-    qdata$id__ = 1:dim(qdata)[1]
+    qdata$id__ = seq_len(dim(qdata)[1])
   }
   # conditional outcome regression fit
   environment(newform) <- list2env(list(qdata=qdata))
@@ -174,7 +174,7 @@ coxmsm.fit <- function(
                ...)
   ## get predictions (set exposure to 0,1,...,q-1)
   if(is.null(intvals)){
-    intvals = (1:length(table(qdata[expnms[1]]))) - 1
+    intvals = seq_len(length(table(qdata[expnms[1]]))) - 1
   }
   ymat = fit$y
   tval = grep("stop|time",colnames(ymat) , value=TRUE)
@@ -185,7 +185,7 @@ coxmsm.fit <- function(
                                          replace = TRUE
   )))
   names(newids) <- id
-  newdata <- merge(qdata,newids, by=id, all.x=FALSE, all.y=TRUE)[1:MCsize,] # this might trim one id, keep MCsize large
+  newdata <- merge(qdata,newids, by=id, all.x=FALSE, all.y=TRUE)[seq_len(MCsize),] # this might trim one id, keep MCsize large
   
   predit <- function(idx){
     newdata[,expnms] <- idx
@@ -570,14 +570,14 @@ qgcomp.cox.boot <- function(f, data, expnms=NULL, q=4, breaks=NULL,
     } else{
       nvals <- q
     }
-    intvals <- (1:nvals)-1
+    intvals <- seq_len(nvals)-1
   } else {
     # if( is.null(breaks) & is.null(q)) # also includes NA
     qdata <- data
     # if no transformation is made (no quantiles, no breaks given)
     # then draw distribution values from quantiles of all the exposures
     # pooled together
-    # TODO: allow user specification of this
+    # : allow user specification of this
     message("\nNote: using quantiles of all exposures combined in order to set 
           proposed intervention values for overall effect (25th, 50th, 75th %ile)
         You can ensure this is valid by scaling all variables in expnms to have similar ranges.")
@@ -586,7 +586,7 @@ qgcomp.cox.boot <- function(f, data, expnms=NULL, q=4, breaks=NULL,
   }
   if(is.null(id)) {
     id <- "id__"
-    qdata$id__ <- 1:dim(qdata)[1]
+    qdata$id__ <- seq_len(dim(qdata)[1])
   }
   if(dim(qdata)[1]>MCsize) MCsize = dim(qdata)[1]
   ###
@@ -618,19 +618,21 @@ qgcomp.cox.boot <- function(f, data, expnms=NULL, q=4, breaks=NULL,
   }
   set.seed(seed)
   if(parallel){
-    Sys.setenv(R_FUTURE_SUPPORTSMULTICORE_UNSTABLE="quiet")
-    future::plan(strategy = future::multiprocess)
-    bootsamps <- future.apply::future_sapply(X=1:B, FUN=psi.only,
+    #Sys.setenv(R_FUTURE_SUPPORTSMULTICORE_UNSTABLE="quiet")
+    future::plan(strategy = future::multisession)
+    bootsamps <- future.apply::future_lapply(X=seq_len(B), FUN=psi.only,
                                     f=newform, qdata=qdata, intvals=intvals, 
                                     expnms=expnms, degree=degree, nids=nids, id=id,
+                                    future.seed=TRUE,
                                     weights=qdata$weights, MCsize=MCsize, ...)
-    future::plan(future::sequential)
+    future::plan(strategy = future::transparent)
   }else {
-    bootsamps <- sapply(X=1:B, FUN=psi.only,
+    bootsamps <- lapply(X=seq_len(B), FUN=psi.only,
                         f=newform, qdata=qdata, intvals=intvals, 
                         expnms=expnms, degree=degree, nids=nids, id=id, 
                         weights=weights, MCsize=MCsize, ...)
   }
+  bootsamps = do.call("cbind", bootsamps)
   if(is.null(dim(bootsamps))) {
     seb <- sd(bootsamps)
     covmat <- var(bootsamps)

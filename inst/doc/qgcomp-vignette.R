@@ -35,15 +35,26 @@ system.time(qc.fit <- qgcomp.noboot(y~.,dat=metals[,c(Xnm, 'y')], family=gaussia
 #   user  system elapsed 
 # 81.644   4.194  86.520 
 
-
-#first note that qgcomp is very fast
-
+## ----linear model and runtimeb, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
 # View results: scaled coefficients/weights and statistical inference about
 # mixture effect
 qc.fit
 
+## ----linear model and runtime c, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
+# quantized data
+head(qc.fit$qx)
 
+## ----linear model and runtime d, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
+# regression with quantized data
+qc.fit$qx$y = qc.fit$fit$data$y # first bring outcome back into the quantized data
+newfit <- lm(y ~ arsenic_q + barium_q + cadmium_q + calcium_q + chromium_q + copper_q + 
+    iron_q + lead_q + magnesium_q + manganese_q + mercury_q + selenium_q + 
+    silver_q + sodium_q + zinc_q, data=qc.fit$qx)
+newfit
 
+## ----linear model and runtime e, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
+sum(newfit$coefficients[-1]) # sum of all coefficients excluding intercept and confounders, if any
+coef(qc.fit) # overall effect and intercept from qgcomp fit
 
 ## ----logistic qgcomp, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
 
@@ -59,17 +70,16 @@ qcboot.fit2b <- qgcomp.boot(disease_state~., expnms=Xnm,
           q=4, B=10,# B should be 200-500+ in practice
           seed=125, rr=TRUE)
 
-
-# Compare a qgcomp.noboot fit:
+## ----logistic qgcompb, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
 qc.fit2
-# and a qgcomp.boot fit:
+
+## ----logistic qgcompc, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
 qcboot.fit2
-# and a qgcomp.boot fit, where the risk/prevalence ratio is estimated, 
-#  rather than the odds ratio:
+
+## ----logistic qgcompd, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
 qcboot.fit2b
 
-
-## ----adjusting for covariates, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
+## ----adjusting for covariates a, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
 
 qc.fit3 <- qgcomp.noboot(y ~ mage35 + arsenic + barium + cadmium + calcium + chloride + 
                            chromium + copper + iron + lead + magnesium + manganese + 
@@ -78,6 +88,8 @@ qc.fit3 <- qgcomp.noboot(y ~ mage35 + arsenic + barium + cadmium + calcium + chl
                          metals, family=gaussian(), q=4)
 qc.fit3
 plot(qc.fit3)
+
+## ----adjusting for covariates b, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
 qcboot.fit3 <- qgcomp.boot(y ~ mage35 + arsenic + barium + cadmium + calcium + chloride + 
                            chromium + copper + iron + lead + magnesium + manganese + 
                            mercury + selenium + silver + sodium + zinc,
@@ -86,11 +98,13 @@ qcboot.fit3 <- qgcomp.boot(y ~ mage35 + arsenic + barium + cadmium + calcium + c
                          seed=125)
 qcboot.fit3
 p = plot(qcboot.fit3)
+
+## ----adjusting for covariates c, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
 plot(qcboot.fit3, pointwiseref = 3)
 
+## ----adjusting for covariates d, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
 pointwisebound.boot(qcboot.fit3, pointwiseref=3)
 qgcomp:::modelbound.boot(qcboot.fit3)
-
 
 ## ----non-linear non-hom intro, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
 
@@ -105,11 +119,13 @@ qcboot.fit5 <- qgcomp(y~. + .^2,
                          expnms=Xnm,
                          metals[,c(Xnm, 'y')], family=gaussian(), q=4, degree=2, 
                       B=10, rr=FALSE, seed=125)
-qgcomp::pointwisebound.boot(qcboot.fit5)
-qgcomp:::modelbound.boot(qcboot.fit5)
 plot(qcboot.fit5)
 
-## ----graphical non-linearity, results='markup', fig.show='hold', fig.height=3, fig.width=7.5, cache=FALSE----
+## ----overall non-linearityb, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
+qgcomp::pointwisebound.boot(qcboot.fit5)
+qgcomp:::modelbound.boot(qcboot.fit5)
+
+## ----graphical non-linearity 1, results='markup', fig.show='hold', fig.height=3, fig.width=7.5, cache=FALSE----
 library(splines)
 # find all correlations > 0.6 (this is an arbitrary choice)
 cormat = cor(metals[,Xnm])
@@ -134,16 +150,19 @@ qc.fit6nonhom <- qgcomp.boot(y ~ bs(iron)*bs(lead) + bs(iron)*bs(cadmium) + bs(l
                          selenium + silver + sodium + zinc,
                          expnms=newXnm,
                          metals, family=gaussian(), q=8, B=10, degree=3)
-# it helps to place the plots on a common y-axis, which is easy due 
-#  to dependence of the qgcomp plotting functions on ggplot
-pl.fit6lin <- plot(qc.fit6lin, suppressprint = TRUE, pointwiseref = 4)
-pl.fit6nonlin <- plot(qc.fit6nonlin, suppressprint = TRUE, pointwiseref = 4)
-pl.fit6nonhom <- plot(qc.fit6nonhom, suppressprint = TRUE, pointwiseref = 4)
 
+## ----graphical non-linearity 1b, results='markup', fig.show='hold', fig.height=3, fig.width=7.5, cache=FALSE----
+pl.fit6lin <- plot(qc.fit6lin, suppressprint = TRUE, pointwiseref = 4)
 pl.fit6lin + coord_cartesian(ylim=c(-0.75, .75)) + 
   ggtitle("Linear fit: mixture of iron, lead, and cadmium")
+
+## ----graphical non-linearity 2, results='markup', fig.show='hold', fig.height=3, fig.width=7.5, cache=FALSE----
+pl.fit6nonlin <- plot(qc.fit6nonlin, suppressprint = TRUE, pointwiseref = 4)
 pl.fit6nonlin + coord_cartesian(ylim=c(-0.75, .75)) + 
   ggtitle("Non-linear fit: mixture of iron, lead, and cadmium")
+
+## ----graphical non-linearity 3, results='markup', fig.show='hold', fig.height=3, fig.width=7.5, cache=FALSE----
+pl.fit6nonhom <- plot(qc.fit6nonhom, suppressprint = TRUE, pointwiseref = 4)
 pl.fit6nonhom + coord_cartesian(ylim=c(-0.75, .75)) + 
   ggtitle("Non-linear, non-homogeneous fit: mixture of iron, lead, and cadmium")
 
@@ -155,11 +174,11 @@ qc.overfit <- qgcomp.boot(y ~ bs(iron) + bs(cadmium) + bs(lead) +
                          metals, family=gaussian(), q=8, B=10, degree=1)
 qc.overfit
 plot(qc.overfit, pointwiseref = 5)
+
+## ----graphical caution 2, results='markup', fig.show='hold', fig.height=3, fig.width=7.5, cache=FALSE----
 plot(qc.overfit, flexfit = FALSE, pointwiseref = 5)
 
 ## ----non-linear examples, results='markup', fig.show='hold', fig.height=3, fig.width=7.5, cache=FALSE----
-
-# using indicator terms for each quantile
 qc.fit7a <- qgcomp.boot(y ~ factor(iron) + lead + cadmium + 
                          mage35 + arsenic + magnesium + manganese + mercury + 
                          selenium + silver + sodium + zinc,
@@ -169,7 +188,7 @@ qc.fit7a <- qgcomp.boot(y ~ factor(iron) + lead + cadmium +
 summary(qc.fit7a$fit)$coefficients
 plot(qc.fit7a)
 
-# interactions between indicator terms
+## ----non-linear examples 2, results='markup', fig.show='hold', fig.height=3, fig.width=7.5, cache=FALSE----
 qc.fit7b <- qgcomp.boot(y ~ factor(iron)*factor(lead) + cadmium + 
                          mage35 + arsenic + magnesium + manganese + mercury + 
                          selenium + silver + sodium + zinc,
@@ -179,7 +198,7 @@ qc.fit7b <- qgcomp.boot(y ~ factor(iron)*factor(lead) + cadmium +
 #summary(qc.fit7b$fit)$coefficients
 plot(qc.fit7b)
 
-# breaks at specific quantiles (these breaks act on the quantized basis)
+## ----non-linear examples 3, results='markup', fig.show='hold', fig.height=3, fig.width=7.5, cache=FALSE----
 qc.fit7c <- qgcomp.boot(y ~ I(iron>4)*I(lead>4) + cadmium + 
                          mage35 + arsenic + magnesium + manganese + mercury + 
                          selenium + silver + sodium + zinc,
@@ -188,8 +207,6 @@ qc.fit7c <- qgcomp.boot(y ~ I(iron>4)*I(lead>4) + cadmium +
 # underlying fit
 summary(qc.fit7c$fit)$coefficients
 plot(qc.fit7c)
-
-
 
 ## ----splines, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
 AIC(qc.fit6lin$fit)
@@ -292,6 +309,8 @@ qgcomp.noboot(y~ x1, data=datl$dat, family=gaussian(), q = NULL)
 #qgcomp.noboot(y~ x1, data=datl$dat, id="id", family=gaussian(), q = NULL)
 #qgcomp.boot(y~ x1, data=datl$dat, family=gaussian(), q = NULL, MCsize=1000)
 
+## ----clustering 2, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
+
 # clustering by specifying id parameter on
 qgcomp.boot(y~ x1, data=datl$dat, id="id", family=gaussian(), q = NULL, MCsize=1000, B = 5)
 #qgcomp.boot(y~ x1, data=datl$dat, id="id", family=gaussian(), q = NULL, MCsize=1000, B = 500)
@@ -321,17 +340,19 @@ validdata <- metals[valididx,]
 dim(traindata) # 181 observations = 40% of total
 dim(validdata) # 271 observations = 60% of total
 
-## ----pe3, fig.height=5, fig.width=7.5-----------------------------------------
+## ----pe3a, fig.height=5, fig.width=7.5----------------------------------------
 	
 
 splitres <- qgcomp.partials(fun="qgcomp.noboot", f=y~., q=4, 
            traindata=traindata[,c(Xnm, covars, "y")],validdata=validdata[,c(Xnm, covars, "y")], expnms=Xnm)
 splitres
 
+## ----pe3b, fig.height=5, fig.width=7.5----------------------------------------
+
 plot(splitres$pos.fit)
 
 
-## ----pe4----------------------------------------------------------------------
+## ----pe4a---------------------------------------------------------------------
 
 
 nonessentialXnm <- c(
@@ -344,9 +365,12 @@ covars = c('nitrate','nitrite','sulfate','ph', 'total_alkalinity','total_hardnes
 
 
 (qc.fit.essential <- qgcomp.noboot(y~.,dat=metals[,c(Xnm, covars, 'y')], expnms=essentialXnm, family=gaussian()))
+
+
+## ----pe4b---------------------------------------------------------------------
 (qc.fit.nonessential <- qgcomp.noboot(y~.,dat=metals[,c(Xnm, covars, 'y')], expnms=nonessentialXnm, family=gaussian()))
 
-## ----md1----------------------------------------------------------------------
+## ----md1a---------------------------------------------------------------------
 Xnm <- c(
     'arsenic','barium','cadmium','calcium','chromium','copper',
     'iron','lead','magnesium','manganese','mercury','selenium','silver',
@@ -360,23 +384,29 @@ cc = asmiss[complete.cases(asmiss[,c(Xnm, covars, "y")]),] # complete.cases give
 dim(metals) # [1] 452  26
 dim(cc) # [1] 320  26
 
-# complete case analysis
+## ----md1b---------------------------------------------------------------------
 qc.base <- qgcomp.noboot(y~.,expnms=Xnm, dat=metals[,c(Xnm, covars, 'y')], family=gaussian())
-
-qc.cc  <- qgcomp.noboot(y~.,expnms=Xnm, dat=cc[,c(Xnm, covars, 'y')], family=gaussian())
-
-qc.cc2 <- qgcomp.noboot(y~.,expnms=Xnm, dat=asmiss[,c(Xnm, covars, 'y')], family=gaussian())
-
-
 cat("Full data\n")
 qc.base
 
+## ----md1c---------------------------------------------------------------------
+
+qc.cc  <- qgcomp.noboot(y~.,expnms=Xnm, dat=cc[,c(Xnm, covars, 'y')], family=gaussian())
 cat("Complete case analyses\n")
 cat("  #1 explicitly remove observations with missing values\n")
 qc.cc
+
+
+## ----md1d---------------------------------------------------------------------
+qc.cc2 <- qgcomp.noboot(y~.,expnms=Xnm, dat=asmiss[,c(Xnm, covars, 'y')], family=gaussian())
+
+
+
 cat("  #1 rely on R handling of NA values\n")
 qc.cc2
 
+
+## ----md1e---------------------------------------------------------------------
 # calculation of arsenic quantiles is identical
 all.equal(qc.cc$qx$arsenic_q, qc.cc2$qx$arsenic_q[complete.cases(qc.cc2$qx$arsenic_q)])
 # all are equal

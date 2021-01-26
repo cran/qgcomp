@@ -1,3 +1,15 @@
+# qgcomp v2.7.0
+## Major changes
+- None
+
+## Minor changes
+- Changed underlying parallel code to adapt to deprecations from future package
+- Documentation improvements
+- Enabled by-observation limit of detection/right censoring point for mice.impute.leftcensorlognorm
+
+## Bug fixes
+- None
+
 # qgcomp v2.6.0
 ## Major changes
 - Added `cox.survcurve.boot` function to estimate survival curves from a qgcomp.cox.boot fit
