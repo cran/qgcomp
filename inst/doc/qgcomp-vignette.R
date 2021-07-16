@@ -1,6 +1,16 @@
-## ----metals data, echo=TRUE, results='markup', message=FALSE------------------
-library("qgcomp")
+## ----invisibles, echo=FALSE, results='markup', message=FALSE------------------
 library("knitr")
+#library("gWQS")
+
+## ----first step, echo=TRUE, results='markup', message=FALSE-------------------
+library("qgcomp")
+set.seed(543210)
+qdat = simdata_quantized(n=5000, outcomtype="continuous", cor=c(.95, -0.3), b0=0, coef=c(0.25, -0.1, 0.05), q=4)
+head(qdat)
+cor(qdat[,c("x1", "x2", "x3")])
+qgcomp(y~x1+x2+x3, expnms=c("x1", "x2", "x3"), data=qdat)
+
+## ----metals data, echo=TRUE, results='markup', message=FALSE------------------
 library("ggplot2")
 data("metals", package="qgcomp")
 head(metals)
@@ -23,8 +33,8 @@ system.time(qc.fit <- qgcomp.noboot(y~.,dat=metals[,c(Xnm, 'y')], family=gaussia
 #  0.011   0.002   0.018 
 
 # contrasting other methods with computational speed
-# WQS regression
-#system.time(wqs.fit <- gwqs(y~NULL,mix_name=Xnm, data=metals[,c(Xnm, 'y')], family="gaussian"))
+# WQS regression (v3.0.1 of gWQS package)
+#system.time(wqs.fit <- gWQS::gwqs(y~wqs,mix_name=Xnm, data=metals[,c(Xnm, 'y')], family="gaussian"))
 #   user  system elapsed 
 # 35.775   0.124  36.114 
 
@@ -124,6 +134,9 @@ plot(qcboot.fit5)
 ## ----overall non-linearityb, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
 qgcomp::pointwisebound.boot(qcboot.fit5)
 qgcomp:::modelbound.boot(qcboot.fit5)
+
+## ----overall non-linearity psi interp, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
+qcboot.fit5
 
 ## ----graphical non-linearity 1, results='markup', fig.show='hold', fig.height=3, fig.width=7.5, cache=FALSE----
 library(splines)

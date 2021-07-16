@@ -165,15 +165,13 @@ zimsm.fit <- function(
   msmdat$Ya = do.call("c", predmat)
   msmdat$psi = rep(intvals, each=MCsize)
   
-  fstr = paste("Ya ~ 1", 
+  msmforms = paste("Ya ~ 1", 
                ifelse(containmix[["count"]], "+ poly(psi, degree=degree, raw=TRUE) | 1", "| 1"),
                ifelse(containmix[["zero"]], "+ poly(psi, degree=degree, raw=TRUE)", "")
   )
-  #if(!is.null(weights)){
-  #  msmdat[,'__weights'] = newdata[,weights]
-  #}
-
-  msmfit <- zeroinfl(as.formula(fstr), data=msmdat, x=x,
+  msmform = as.formula(msmforms)
+  
+  msmfit <- zeroinfl(msmform, data=msmdat, x=x,
                      weights=weights,
                      ...)
   if(msmfit$optim$convergence[1]!=0) warning("MSM did not converge")
@@ -367,7 +365,7 @@ qgcomp.zi.noboot <- function(f,
 
   qx <- qdata[, expnms]
   names(qx) <- paste0(names(qx), "_q")
-  res <- list(
+  res <- .qgcomp_object(
     qx = qx, fit = fit, 
     psi = lapply(estb, function(x) x[-1]), 
     var.psi = lapply(seb, function(x) x[-1]^2), 
@@ -375,9 +373,6 @@ qgcomp.zi.noboot <- function(f,
     ci = lapply(ci, function(x) x[-1,]), 
     coef = estb, 
     var.coef = lapply(seb, function(x) c('(Intercept)' = x[1]^2, 'psi1' = x[2]^2)),
-    #covmat.coef = lapply(seb, function(x) c('(Intercept)' = x[1]^2, 'psi1' = x[2]^2)),
-    #covmat.coef=c('(Intercept)' = seb[1]^2, 'psi1' = seb[2]^2), 
-    #covmat.coef=lapply(vcov_mod, function(x) vc_comb(aname="(Intercept)", expnms=expnms, covmat = x)),
     covmat.coef= vcov_mod,
     ci.coef = ci,
     expnms=expnms, q=q, breaks=br, degree=1,
@@ -387,20 +382,11 @@ qgcomp.zi.noboot <- function(f,
     neg.weights = lapply(neg.weights, function(x) sort(x, decreasing = TRUE)), 
     pos.size = pos.size,
     neg.size = neg.size,
-    bootstrap=FALSE,
-    cov.yhat=NULL,
-    alpha=alpha, call=origcall
+    alpha=alpha, call=origcall,
+    zstat = tstat,
+    pval = pvalz
   )
-  #if(fit$family$family=='gaussian'){
-  #  res$tstat <- tstat
-  #  res$df <- df
-  #  res$pval <- pval
-  #}
-  #if(fit$family$family=='binomial'){
-    res$zstat <- tstat
-    res$pval <- pvalz
-  #}
-    attr(res, "class") <- c("ziqgcompfit", "qgcompfit")
+    attr(res, "class") <- c("ziqgcompfit", attr(res, "class"))
     res
 }
 
@@ -419,7 +405,10 @@ qgcomp.zi.boot <- function(f,
                            parallel=FALSE, 
                            MCsize=10000, 
                            msmcontrol=zimsm.fit.control(),
-                          ...){
+                           parplan = FALSE,
+ ...
+){
+
   #' @title Quantile g-computation for zero-inflated count outcomes
   #'  
   #' @description This function estimates a linear dose-response parameter representing a one quantile
@@ -492,6 +481,7 @@ qgcomp.zi.boot <- function(f,
   #'  linear fits with qgcomp.zi.noboot to gain some intuition for the level of expected simulation 
   #'  error at a given value of MCsize)
   #' @param msmcontrol named list from \code{\link[qgcomp]{zimsm.fit.control}}
+  #' @param parplan (logical, default=FALSE) automatically set future::plan to plan(multiprocess) (and set to plan(invisible) after bootstrapping)
   #' @param ... arguments to glm (e.g. family)
   #' @seealso \code{\link[qgcomp]{qgcomp.zi.noboot}},\code{\link[qgcomp]{qgcomp.boot}}, 
   #' \code{\link[qgcomp]{qgcomp.cox.boot}},  and \code{\link[pscl]{zeroinfl}}
@@ -675,7 +665,7 @@ qgcomp.zi.boot <- function(f,
   set.seed(seed)
   if(parallel){
     #Sys.setenv(R_FUTURE_SUPPORTSMULTICORE_UNSTABLE="quiet")
-    future::plan(strategy = future::multisession)
+    if(parplan) future::plan(strategy = future::multisession)
     #testenv <- list2env(list(qdata=qdata, weights=weights))
     bootsamps <- future.apply::future_lapply(X=seq_len(B), FUN=psi.only,f=newform, qdata=qdata, intvals=intvals, 
                                              expnms=expnms, degree=degree, nids=nids, id=id, 
@@ -684,7 +674,7 @@ qgcomp.zi.boot <- function(f,
                                              future.seed=TRUE,
                                              ...)
     
-    future::plan(strategy = future::transparent)
+    if(parplan) future::plan(strategy = future::transparent)
   }else{
     bootsamps <- lapply(X=seq_len(B), FUN=psi.only,f=newform, qdata=qdata, intvals=intvals, 
                         expnms=expnms, degree=degree, nids=nids, id=id, 
@@ -713,7 +703,7 @@ qgcomp.zi.boot <- function(f,
   
   qx <- qdata[, expnms]
   names(qx) <- paste0(names(qx), "_q")
-  res <- list(
+  res <- .qgcomp_object(
     qx = qx, fit = msmfit$fit, msmfit = msmfit$msmfit, 
     psi = lapply(estb, function(x) x[-1]), 
     var.psi = lapply(seb, function(x) x[-1]^2), 
@@ -735,11 +725,11 @@ qgcomp.zi.boot <- function(f,
     y.expected=msmfit$Ya, y.expectedmsm=msmfit$Yamsm, index=msmfit$A,
     y.ll = hats.ll, y.ul = hats.ul,
     bootsamps = bootsamps,
-    alpha=alpha
+    alpha=alpha,
+    zstat = tstat,
+    pval = pvalz
   )
-  res$zstat <- tstat
-  res$pval <- pvalz
-  attr(res, "class") <- c("ziqgcompfit", "qgcompfit")
+  attr(res, "class") <- c("ziqgcompfit", attr(res, "class"))
   res
 }
 

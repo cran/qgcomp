@@ -57,6 +57,9 @@ var hljs=new function(){function m(p){return p.replace(/&/gm,"&amp;").replace(/<
 hljs.initHighlightingOnLoad();
 </script>
 
+<!-- MathJax scripts -->
+<script type="text/javascript" src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js?config=TeX-MML-AM_CHTML">
+</script>
 
 
 <style type="text/css">
@@ -220,6 +223,68 @@ provide a useful road map for how to interpret the results of a qgcomp fit, and
 where efforts should be spent in terms of ensuring accurate model specification
 and selection of exposures that are sufficient to control co-pollutant confounding.</p>
 
+<h3>The model</h3>
+
+<p>Say we have an outcome \(Y\), some exposures \(\mathbb{X}\) and possibly some other covariates (e.g. potential confounders) denoted by \(\mathbb{Z}\).</p>
+
+<p>The basic model of quantile g-computation is a joint marginal structural model given by</p>
+
+<p>\[
+\mathbb{E}(Y^{\mathbf{X}_q} | \mathbf{Z,\psi,\eta}) = g(\psi_0 + \psi_1 S_q +  \mathbf{\eta Z})
+\]</p>
+
+<p>where \(g(\cdot)\) is a link function in a generalized linear model (e.g. the inverse logit function in the case of a logistic model for the probability that \(Y=1\)), \(\psi_0\) is the model intercept, \(\mathbf{\eta}\) is a set of model coefficients for the covariates and \(S_q\) is an &ldquo;index&rdquo; that represents a joint value of exposures. Quantile g-computation (by default) transforms all exposures \(\mathbf{X}\) into \(\mathbf{X}_q\), which are &ldquo;scores&rdquo; taking on discrete values 0,1,2,etc. representing a categorical &ldquo;bin&rdquo; of exposure. By default, there are four bins with evenly spaced quantile cutpoints for each exposure, so \({X}_q=0\) means that \(X\) was below the observed 25th percentile for that exposure. The index \(S_q\) represents all exposures being set to the same value (again, by default, discrete values 0,1,2,3). Thus, <em>the parameter \(\psi_1\) quantifies the expected change in the outcome, given a one quantile increase in all exposures simultaneously,</em> possibly adjusted for \(\mathbf{Z}\). </p>
+
+<p>There are nuances to this particular model form that are available in the <code>qgcomp</code> package which will be explored below. There exists one special case of quantile g-computation that leads to fast fitting: linear/additive exposure effects. Here we simulate &ldquo;pre-quantized&rdquo; data where the exposures \(X_1, X_2, X_3\) can only take on values of 0,1,2,3 in equal proportions. The model underlying the outcomes is given by the linear regression:</p>
+
+<p>\[
+\mathbb{E}(Y | \mathbf{X,\beta}) = \beta_0 + \beta_1 X_1 + \beta_2 X_2  + \beta_3 X_3 
+\]</p>
+
+<p>with the true values of \(\beta_0=0, \beta_1 =0.25, \beta_2 =-0.1, \beta_3=0.05\), and \(X_1\) is strongly positively correlated with \(X_2\) (\(\rho=0.95\)) and negatively correlated with \(X_3\) (\(\rho=-0.3\)). In this simple setting, the parameter \(\psi_1\) will equal the sum of the \(\beta\) coefficients (0.2). Here we see that qgcomp estimates a value very close to 0.2 (as we increase sample size, the estimated value will be expected to become increasingly close to 0.2).</p>
+
+<pre><code class="r">library(&quot;qgcomp&quot;)
+set.seed(543210)
+qdat = simdata_quantized(n=5000, outcomtype=&quot;continuous&quot;, cor=c(.95, -0.3), b0=0, coef=c(0.25, -0.1, 0.05), q=4)
+head(qdat)
+</code></pre>
+
+<pre><code>##   x1 x2 x3          y
+## 1  2  2  3  0.5539253
+## 2  2  3  1 -0.1005701
+## 3  2  2  3  0.3782267
+## 4  1  2  2 -0.4557419
+## 5  0  0  1  0.6124436
+## 6  1  1  2  0.7569574
+</code></pre>
+
+<pre><code class="r">cor(qdat[,c(&quot;x1&quot;, &quot;x2&quot;, &quot;x3&quot;)])
+</code></pre>
+
+<pre><code>##          x1       x2       x3
+## x1  1.00000  0.95552 -0.30368
+## x2  0.95552  1.00000 -0.29840
+## x3 -0.30368 -0.29840  1.00000
+</code></pre>
+
+<pre><code class="r">qgcomp(y~x1+x2+x3, expnms=c(&quot;x1&quot;, &quot;x2&quot;, &quot;x3&quot;), data=qdat)
+</code></pre>
+
+<pre><code>## Scaled effect size (positive direction, sum of positive coefficients = 0.3)
+##    x1    x3 
+## 0.775 0.225 
+## 
+## Scaled effect size (negative direction, sum of negative coefficients = -0.0966)
+## x2 
+##  1 
+## 
+## Mixture slope parameters (Delta method CI):
+## 
+##               Estimate Std. Error Lower CI Upper CI t value Pr(&gt;|t|)
+## (Intercept) -0.0016583  0.0359609 -0.07214 0.068824 -0.0461   0.9632
+## psi1         0.2035810  0.0219677  0.16053 0.246637  9.2673   &lt;2e-16
+</code></pre>
+
 <h2>How to use the <code>qgcomp</code> package</h2>
 
 <p>Here we use a running example from the <code>metals</code> dataset from the from the package 
@@ -237,9 +302,7 @@ weighted quantile sum (WQS) regression, and at <a href="https://jenfb.github.io/
 
 <p>The <code>metals</code> dataset from the from the package <code>qgcomp</code>, comprises a set of simulated well water exposures and two health outcomes (one continuous, one binary/time-to-event). The exposures are transformed to have mean = 0.0, standard deviation = 1.0. The data are used throughout to demonstrate usage and features of the <code>qgcomp</code> package.</p>
 
-<pre><code class="r">library(&quot;qgcomp&quot;)
-library(&quot;knitr&quot;)
-library(&quot;ggplot2&quot;)
+<pre><code class="r">library(&quot;ggplot2&quot;)
 data(&quot;metals&quot;, package=&quot;qgcomp&quot;)
 head(metals)
 </code></pre>
@@ -302,15 +365,15 @@ system.time(qc.fit &lt;- qgcomp.noboot(y~.,dat=metals[,c(Xnm, &#39;y&#39;)], fam
 </code></pre>
 
 <pre><code>##    user  system elapsed 
-##   0.015   0.001   0.016
+##   0.012   0.000   0.012
 </code></pre>
 
 <pre><code class="r">#   user  system elapsed 
 #  0.011   0.002   0.018 
 
 # contrasting other methods with computational speed
-# WQS regression
-#system.time(wqs.fit &lt;- gwqs(y~NULL,mix_name=Xnm, data=metals[,c(Xnm, &#39;y&#39;)], family=&quot;gaussian&quot;))
+# WQS regression (v3.0.1 of gWQS package)
+#system.time(wqs.fit &lt;- gWQS::gwqs(y~wqs,mix_name=Xnm, data=metals[,c(Xnm, &#39;y&#39;)], family=&quot;gaussian&quot;))
 #   user  system elapsed 
 # 35.775   0.124  36.114 
 
@@ -426,7 +489,7 @@ newfit
 <pre><code class="r">coef(qc.fit) # overall effect and intercept from qgcomp fit
 </code></pre>
 
-<pre><code>## (Intercept)        psi1 
+<pre><code>## (intercept)        psi1 
 ##  -0.3566699   0.2663942
 </code></pre>
 
@@ -712,6 +775,26 @@ plot(qcboot.fit5)
 
 <p>Ideally, the smooth fit will look very similar to the model prediction regression 
 line.</p>
+
+<h4>Interpretation of model parameters</h4>
+
+<p>As the output below shows, setting &ldquo;degree=2&rdquo; yields a second parameter in the model fit (\(\psi_2\)). The output of qgcomp now corresponds to estimates of the marginal structural model given by 
+\[
+\mathbb{E}(Y^{\mathbf{X}_q}) = g(\psi_0 + \psi_1 S_q + \psi_2 S_q^2)
+\]</p>
+
+<pre><code class="r">qcboot.fit5
+</code></pre>
+
+<pre><code>## Mixture slope parameters (bootstrap CI):
+## 
+##             Estimate Std. Error Lower CI Upper CI t value Pr(&gt;|t|)
+## (Intercept) -0.89239    0.70336 -2.27095  0.48617 -1.2688   0.2055
+## psi1         0.90649    0.93820 -0.93235  2.74533  0.9662   0.3347
+## psi2        -0.19970    0.32507 -0.83682  0.43743 -0.6143   0.5395
+</code></pre>
+
+<p>so that \(\psi_2\) can be interpreted similar to quadratic terms that might appear in a generalized linear model. \(\psi_2\) estimates the change in the outcome for an additional unit of squared joint exposure, over-and-above the linear effect given by \(\psi_1\). Informally, this is a way of formally assessing specific types of non-linearity in the joint exposure-response curves, and there are many other (slightly incorrect but intuitively useful) ways of interpreting parameters for squared terms in regressions (beyond the scope of this document). Intuition from generalized linear models applies directly to the models fit by quantile g-computation.</p>
 
 <h3>Example 5: Comparing model fits and further exploring non-linearity</h3>
 
@@ -1234,7 +1317,7 @@ qgcomp.boot(y~ x1, data=datl$dat, id=&quot;id&quot;, family=gaussian(), q = NULL
 </code></pre>
 
 <pre><code>## 
-## Note: using all possible values of exposure as the 
+## Note: using all possible values of exposure as the
 ##               intervention values
 </code></pre>
 
@@ -1549,6 +1632,24 @@ all.equal(qc.cc$qx$cadmium_q, qc.cc2$qx$cadmium_q[complete.cases(qc.cc2$qx$arsen
 <h3>Multiple imputation</h3>
 
 <p>Multiple imputation uses multiple datasets with different imputed values for each missing value across datasets. Separate analyses are performed on each of these datasets, and the results are combined using standard rules. The function <code>mice.impute.leftcenslognorm</code> can be interfaced with the <code>mice</code> package for efficient programming of multiple imputation based analysis with quantile g-computation. Examples cannot be included here without explicitly installing the <code>mice</code> package, but an example can be seen in the help file for <code>mice.impute.leftcenslognorm</code>.</p>
+
+<h2>FAQ</h2>
+
+<h3>Why don&#39;t I get weights from the <code>boot</code> functions?</h3>
+
+<p>Users often use the <code>qgcomp.*.boot</code> functions because the want to marginalize over confounders or fit a non-linear joint exposure function. In both cases, the overall exposure response will no longer correspond to a simple weighted average of model coefficients, so none of the <code>qgcomp.*.boot</code> functions will calculate weights. In most use cases, the weights would vary according to which level of joint exposure you&#39;re at, so it is not a straightforward proposition to calculate them (and you may not wish to report 4 sets of weights if you use the default <code>q=4</code>). If you fit an otherwise linear model, you can get weights from a <code>qgcomp.*.noboot</code> which will be very close to the weights you might get from a linear model fit via <code>qgcomp.*.boot</code> functions, but be explicit that the weights come from a different model than the inference about joint exposure effects.</p>
+
+<h3>Do I need to model non-linearity and non-additivity of exposures?</h3>
+
+<p>Maybe. The inferential object of qgcomp is the set of \(\psi\) parameters that correspond to a joint exposure response. As it turns out, with correlated exposures non-linearity can disguise itself as non-additivity (Belzak and Bauer [2019] Addictive Behaviors). If we were inferring independent effects, this distinction would be crucial, but if we only wish to be accurate for predicting the outcome at joint levels of exposure, it may turn out that it doesn&#39;t matter a whole lot if you model non-linearity in the joint response function through non-additivity or non-linearity of individual exposures in a given study. Models fit in qgcomp still make the crucial assumption that you are able to model the joint exposure response via parametric models, so that assumption should not be forgotten in an effort to try to disentagle non-linearity (e.g. quadratic terms of exposures) from non-additivity (e.g. product terms between exposures). The important part to note about parametric modeling is that we have to explicitly tell the model to be non-linear, and no adaptation to non-linear settings will happen automatically. Exploring non-linearity is not a trivial endeavor.</p>
+
+<h3>Do I have to use quantiles?</h3>
+
+<p>No. You can turn off &ldquo;quantization&rdquo; by setting <code>q=NULL</code> or you can supply your own categorization cutpoints via the &ldquo;breaks&rdquo; argument. It is up to the user to interpret the results if either of these options is taken.</p>
+
+<h3>Can I cite this document?</h3>
+
+<p>Probably not in a scientific manuscript. If you find an idea here that is not published anywhere else and wish to develop it into a full manuscript, feel free! (But probably check with <a href="mailto:akeil@unc.edu">akeil@unc.edu</a> to ask if a paper is already in development.)</p>
 
 <h2>References</h2>
 

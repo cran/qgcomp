@@ -1,3 +1,13 @@
+# qgcomp v2.8.0
+## Major changes
+- Exposed simulation functions to the user
+- Enabled no-intercept models in qgcomp.boot and qgcomp.noboot
+
+## Minor changes
+- Parallel code now enables external setting of if(parplan) future::plan to facilitate broader parallelization schemes
+- Documentation improvements
+- Included FAQs in vignette
+
 # qgcomp v2.7.0
 ## Major changes
 - None

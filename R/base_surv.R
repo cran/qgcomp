@@ -220,13 +220,12 @@ coxmsm.fit <- function(
     #msmweights = newdata$weights
     msmweights = rep(newdata$weights, times=length(intvals))
   )
-  #if(!is.null(weights)){
-  #  msmdat[,'__weights'] = newdata[,weights]
-  #}
-  #if(is.null(weights)){
-  #  msmdat[,'XXweights'] = 1
-  #}
-  msmfit <- coxph(Ya ~ poly(psi, degree=degree, raw=TRUE), data=msmdat, x=TRUE, y=TRUE, 
+  msmforms = paste0("Ya ~ ", 
+                    "poly(psi, degree=",degree,", raw=TRUE)"
+  )
+  msmform = as.formula(msmforms)
+  
+  msmfit <- coxph(msmform, data=msmdat, x=TRUE, y=TRUE, 
                   weights=msmweights
                   )
   coxfam = list(family='cox', link='log', linkfun=log)
@@ -399,22 +398,26 @@ qgcomp.cox.noboot <- function (f, data, expnms = NULL, q = 4, breaks = NULL,
   qx <- qdata[, expnms]
   names(qx) <- paste0(names(qx), "_q")
   names(estb) = "psi1"
-  res <- list(qx = qx, fit = fit, 
-              psi = estb, var.psi = seb^2, covmat.psi = seb^2, ci = ci, 
-              coef = estb, var.coef = seb^2, covmat.coef = seb^2, ci.coef = ci, 
-              expnms = expnms, q = q, breaks = br, degree = 1, 
-              pos.psi = pos.psi, neg.psi = neg.psi, 
-              pos.weights = sort(pos.weights, decreasing = TRUE), 
-              neg.weights = sort(neg.weights, decreasing = TRUE), 
-              pos.size = sum(abs(wcoef[poscoef])), neg.size = sum(abs(wcoef[negcoef])), 
-              bootstrap = FALSE, zstat = tstat, pval = pvalz, alpha=alpha, call=origcall)
-  attr(res, "class") <- c("survqgcompfit", "qgcompfit")
+  res <- .qgcomp_object(
+    qx = qx, fit = fit, 
+    psi = estb, var.psi = seb^2, covmat.psi = seb^2, ci = ci, 
+    coef = estb, var.coef = seb^2, covmat.coef = seb^2, ci.coef = ci, 
+    expnms = expnms, q = q, breaks = br, degree = 1, 
+    pos.psi = pos.psi, neg.psi = neg.psi, 
+    pos.weights = sort(pos.weights, decreasing = TRUE), 
+    neg.weights = sort(neg.weights, decreasing = TRUE), 
+    pos.size = sum(abs(wcoef[poscoef])), neg.size = sum(abs(wcoef[negcoef])), 
+    zstat = tstat, pval = pvalz, alpha=alpha, call=origcall, hasintercept=FALSE
+  )
+  attr(res, "class") <- c("survqgcompfit", attr(res, "class"))
   res
 }
 
 qgcomp.cox.boot <- function(f, data, expnms=NULL, q=4, breaks=NULL, 
                                        id=NULL, weights, cluster=NULL, alpha=0.05, B=200, MCsize=10000, degree=1, 
-                                       seed=NULL, parallel=FALSE, ...){# bayes=FALSE,rr=TRUE, 
+                                       seed=NULL, parallel=FALSE,  parplan = FALSE,
+ ...
+){# bayes=FALSE,rr=TRUE, 
   #' @title Quantile g-computation for survival outcomes
   #'  
   #' @description This function yields population average effect estimates for 
@@ -486,6 +489,7 @@ qgcomp.cox.boot <- function(f, data, expnms=NULL, q=4, breaks=NULL,
   #'  to 2 decimal places).
   #' @param seed integer or NULL: random number seed for replicable bootstrap results
   #' @param parallel logical (default FALSE): use future package to speed up bootstrapping
+  #' @param parplan (logical, default=FALSE) automatically set future::plan to plan(multiprocess) (and set to plan(invisible) after bootstrapping)
   #' @param ... arguments to glm (e.g. family)
   #' @seealso \code{\link[qgcomp]{qgcomp.cox.noboot}}, and \code{\link[qgcomp]{qgcomp}}
   #' @return a qgcompfit object, which contains information about the effect
@@ -619,13 +623,13 @@ qgcomp.cox.boot <- function(f, data, expnms=NULL, q=4, breaks=NULL,
   set.seed(seed)
   if(parallel){
     #Sys.setenv(R_FUTURE_SUPPORTSMULTICORE_UNSTABLE="quiet")
-    future::plan(strategy = future::multisession)
+    if(parplan) future::plan(strategy = future::multisession)
     bootsamps <- future.apply::future_lapply(X=seq_len(B), FUN=psi.only,
                                     f=newform, qdata=qdata, intvals=intvals, 
                                     expnms=expnms, degree=degree, nids=nids, id=id,
                                     future.seed=TRUE,
                                     weights=qdata$weights, MCsize=MCsize, ...)
-    future::plan(strategy = future::transparent)
+    if(parplan) future::plan(strategy = future::transparent)
   }else {
     bootsamps <- lapply(X=seq_len(B), FUN=psi.only,
                         f=newform, qdata=qdata, intvals=intvals, 
@@ -648,16 +652,17 @@ qgcomp.cox.boot <- function(f, data, expnms=NULL, q=4, breaks=NULL,
   # 'weights' not applicable in this setting, generally (i.e. if using this function 
   #   for non-linearity, then weights will vary with level of exposure)
   qx <- qdata[, expnms]
-  res <- list(
+  res <- .qgcomp_object(
     qx = qx, fit = msmfit$fit, msmfit = msmfit$msmfit, 
     psi = estb, var.psi = seb ^ 2, covmat.psi=covmat, ci = ci,
     coef = estb, var.coef = seb ^ 2, covmat.coef=covmat, ci.coef = ci, 
     expnms=expnms, q=q, breaks=br, degree=degree,
-    pos.psi = NULL, neg.psi = NULL, 
-    pos.weights = NULL,neg.weights = NULL, pos.size = NULL,neg.size = NULL, bootstrap=TRUE,
-    y.expected=msmfit$Ya, y.expectedmsm=msmfit$Yamsm, index=msmfit$A,
+    bootstrap=TRUE,
+    y.expected=msmfit$Ya, 
+    y.expectedmsm=msmfit$Yamsm, 
+    index=msmfit$A,
     bootsamps = bootsamps,
-    alpha=alpha, call=origcall
+    alpha=alpha, call=origcall, hasintercept=FALSE
   )
   if(msmfit$fit$family$family=='cox'){
     res$zstat <- tstat
@@ -666,6 +671,6 @@ qgcomp.cox.boot <- function(f, data, expnms=NULL, q=4, breaks=NULL,
     stop("MSM fit is not a cox model, which is an unexpected bug. 
          Send any relevant info to akeil@unc.edu")
   }
-  attr(res, "class") <- c("survqgcompfit", "qgcompfit")
+  attr(res, "class") <- c("survqgcompfit", attr(res, "class"))
   res
 }

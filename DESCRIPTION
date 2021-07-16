@@ -1,7 +1,7 @@
 Package: qgcomp
 Title: Quantile G-Computation
-Version: 2.7.0
-Date: 2021-01-26
+Version: 2.8.0
+Date: 2021-07-16
 Authors@R: 
     person(given = "Alexander",
            family = "Keil",
@@ -30,6 +30,6 @@ Language: en-US
 LazyData: true
 RoxygenNote: 7.1.1
 NeedsCompilation: no
-Packaged: 2021-01-26 21:42:07 UTC; akeil
+Packaged: 2021-07-16 05:11:12 UTC; akeil
 Repository: CRAN
-Date/Publication: 2021-01-26 22:10:02 UTC
+Date/Publication: 2021-07-16 05:30:02 UTC

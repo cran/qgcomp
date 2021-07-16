@@ -16,6 +16,7 @@ msm.fit(
   weights,
   bayes = FALSE,
   MCsize = nrow(qdata),
+  hasintercept = TRUE,
   ...
 )
 }
@@ -60,6 +61,8 @@ as needed to reduce simulation error to an acceptable magnitude (can compare psi
 linear fits with qgcomp.zi.noboot to gain some intuition for the level of expected simulation
 error at a given value of MCsize)}
 
+\item{hasintercept}{(logical) does the model have an intercept?}
+
 \item{...}{arguments to glm (e.g. family)}
 }
 \description{
@@ -86,7 +89,7 @@ set.seed(50)
 dat <- data.frame(y=runif(200), x1=runif(200), x2=runif(200), z=runif(200))
 X <- c('x1', 'x2')
 qdat <- quantize(dat, X, q=4)$data
-mod <- qgcomp:::msm.fit(f=y ~ z + x1 + x2 + I(x1*x2), 
+mod <- qgcomp:::msm.fit(f=y ~ z + x1 + x2 + I(x1*x2),
         expnms = c('x1', 'x2'), qdata=qdat, intvals=1:4, bayes=FALSE)
 summary(mod$fit) # outcome regression model
 summary(mod$msmfit) # msm fit (variance not valid - must be obtained via bootstrap)
