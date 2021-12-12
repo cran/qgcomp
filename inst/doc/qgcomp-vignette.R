@@ -249,7 +249,7 @@ plot(qc.survfit1)
 #library(survival)
 qc.survfit2 <- qgcomp.cox.boot(Surv(disease_time, disease_state) ~ .,expnms=Xnm,
                          data=metals[,c(Xnm, 'disease_time', 'disease_state')], q=4, 
-                         B=5, MCsize=1000, parallel=TRUE)
+                         B=5, MCsize=1000, parallel=TRUE, parplan=TRUE)
 qc.survfit2
 
 # testing proportional hazards (note that x=TRUE is not needed (and will cause an error if used))
@@ -262,17 +262,26 @@ p2 + labs(title="Linear log(hazard ratio), overall and exposure specific")
 ## ----time-to-event3, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
 qc.survfit3 <- qgcomp.cox.boot(Surv(disease_time, disease_state) ~ . + .^2,expnms=Xnm,
                          data=metals[,c(Xnm, 'disease_time', 'disease_state')], q=4, 
-                         B=5, MCsize=1000, parallel=TRUE)
+                         B=5, MCsize=1000, parallel=TRUE, parplan=TRUE)
+qc.survfit3
+p3 = plot(qc.survfit3, suppressprint = TRUE) 
+p3 + labs(title="Non-linear log(hazard ratio) overall, linear exposure specific ln-HR")
+
+
+## ----time-to-event3b, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
+future::plan(future::multisession)# parallel evaluation
+qc.survfit3 <- qgcomp.cox.boot(Surv(disease_time, disease_state) ~ . + .^2,expnms=Xnm,
+                         data=metals[,c(Xnm, 'disease_time', 'disease_state')], q=4, 
+                         B=5, MCsize=1000, parallel=TRUE, parplan=FALSE)
 qc.survfit3
 p3 = plot(qc.survfit3, suppressprint = TRUE) 
 p3 + labs(title="Non-linear log(hazard ratio) overall, linear exposure specific ln-HR")
 
 
 ## ----time-to-event4, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
-
 qc.survfit4 <- qgcomp.cox.boot(Surv(disease_time, disease_state) ~ . + .^2,expnms=Xnm,
                          data=metals[,c(Xnm, 'disease_time', 'disease_state')], q=4, 
-                         B=5, MCsize=1000, parallel=TRUE, degree=2)
+                         B=5, MCsize=1000, parallel=TRUE, parplan=FALSE, degree=2)
 qc.survfit4
 # examining the overall hazard ratio as a function of overall exposure
 hrs_q = exp(matrix(c(0,0,1,1,2,4,3,9), ncol=2, byrow=TRUE)%*%qc.survfit4$msmfit$coefficients)
@@ -427,4 +436,7 @@ all.equal(qc.cc$qx$arsenic_q, qc.cc2$qx$arsenic_q[complete.cases(qc.cc2$qx$arsen
 all.equal(qc.cc$qx$cadmium_q, qc.cc2$qx$cadmium_q[complete.cases(qc.cc2$qx$arsenic_q)])
 # not equal
 
+## ----parend, echo=TRUE--------------------------------------------------------
+# return to standard processing
+future::plan(future::sequential) # return to standard evaluation
 

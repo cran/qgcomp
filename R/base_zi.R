@@ -481,7 +481,7 @@ qgcomp.zi.boot <- function(f,
   #'  linear fits with qgcomp.zi.noboot to gain some intuition for the level of expected simulation 
   #'  error at a given value of MCsize)
   #' @param msmcontrol named list from \code{\link[qgcomp]{zimsm.fit.control}}
-  #' @param parplan (logical, default=FALSE) automatically set future::plan to plan(multiprocess) (and set to plan(invisible) after bootstrapping)
+  #' @param parplan (logical, default=FALSE) automatically set future::plan to plan(multisession) (and set to existing plan, if any, after bootstrapping)
   #' @param ... arguments to glm (e.g. family)
   #' @seealso \code{\link[qgcomp]{qgcomp.zi.noboot}},\code{\link[qgcomp]{qgcomp.boot}}, 
   #' \code{\link[qgcomp]{qgcomp.cox.boot}},  and \code{\link[pscl]{zeroinfl}}
@@ -501,7 +501,7 @@ qgcomp.zi.boot <- function(f,
   #' \dontrun{
   #' # warning: the examples below can take a long time to run
   #' res = qgcomp.zi.boot(f=y ~ x1 + x2 | x1 + x2, expnms = c('x1', 'x2'), 
-  #'     data=dat, q=4, dist="poisson", B=1000, MCsize=10000, parallel=TRUE)
+  #'     data=dat, q=4, dist="poisson", B=1000, MCsize=10000, parallel=TRUE, parplan=TRUE)
   #' qgcomp.zi.noboot(f=y ~ x1 + x2 | x1 + x2, expnms = c('x1', 'x2'), 
   #'     data=dat, q=4, dist="poisson")
   #' res
@@ -509,7 +509,7 @@ qgcomp.zi.boot <- function(f,
   #' # accuracy for small MCsize is suspect (compare coefficients between boot/noboot versions), 
   #' # so re-check with MCsize set to larger value (this takes a long time to run)
   #' res2 = qgcomp.zi.boot(f=y ~ x1 + x2 | x1 + x2, expnms = c('x1', 'x2'), 
-  #'     data=dat, q=4, dist="poisson", B=1000, MCsize=50000, parallel=TRUE)
+  #'     data=dat, q=4, dist="poisson", B=1000, MCsize=50000, parallel=TRUE, parplan=TRUE)
   #'  res2
   #' plot(density(res2$bootsamps[4,]))
   #' 
@@ -665,7 +665,10 @@ qgcomp.zi.boot <- function(f,
   set.seed(seed)
   if(parallel){
     #Sys.setenv(R_FUTURE_SUPPORTSMULTICORE_UNSTABLE="quiet")
-    if(parplan) future::plan(strategy = future::multisession)
+    if (parplan) {
+        oplan <- future::plan(strategy = future::multisession)
+        on.exit(future::plan(oplan), add = TRUE)
+      }
     #testenv <- list2env(list(qdata=qdata, weights=weights))
     bootsamps <- future.apply::future_lapply(X=seq_len(B), FUN=psi.only,f=newform, qdata=qdata, intvals=intvals, 
                                              expnms=expnms, degree=degree, nids=nids, id=id, 
@@ -674,7 +677,7 @@ qgcomp.zi.boot <- function(f,
                                              future.seed=TRUE,
                                              ...)
     
-    if(parplan) future::plan(strategy = future::transparent)
+    
   }else{
     bootsamps <- lapply(X=seq_len(B), FUN=psi.only,f=newform, qdata=qdata, intvals=intvals, 
                         expnms=expnms, degree=degree, nids=nids, id=id, 

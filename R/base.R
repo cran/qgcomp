@@ -377,7 +377,6 @@ qgcomp.noboot <- function(f,
         res$zstat <- tstat
         res$pval <- pvalz
       }
-    #attr(res, "class") <- "qgcompfit"
     res
 }
 
@@ -458,7 +457,7 @@ qgcomp.boot <- function(
   #'  error at a given value of MCsize). This likely won't matter much in linear models, but may
   #'  be important with binary or count outcomes.
   #' @param parallel use (safe) parallel processing from the future and future.apply packages
-  #' @param parplan (logical, default=FALSE) automatically set future::plan to plan(multiprocess) (and set to plan(invisible) after bootstrapping)
+  #' @param parplan (logical, default=FALSE) automatically set future::plan to plan(multisession) (and set to existing plan, if any, after bootstrapping)
   #' @param ... arguments to glm (e.g. family)
   #' @seealso \code{\link[qgcomp]{qgcomp.noboot}}, and \code{\link[qgcomp]{qgcomp}}
   #' @return a qgcompfit object, which contains information about the effect
@@ -551,7 +550,7 @@ qgcomp.boot <- function(
   #'
   #' qgcomp.boot(y ~ z + x1iqr + I(x2iqr>0.1) + I(x2>0.4) + I(x2>0.9),
   #'   family="binomial", expnms = c('x1iqr', 'x2iqr'), data=dat, q=NULL, rr=TRUE, B=200,
-  #'   degree=2, parallel=TRUE)
+  #'   degree=2, parallel=TRUE, parplan=TRUE)
   #'
   #'
   #' # weighted model
@@ -691,14 +690,17 @@ qgcomp.boot <- function(
     set.seed(seed)
     if(parallel){
       #Sys.setenv(R_FUTURE_SUPPORTSMULTICORE_UNSTABLE="quiet")
-      if(parplan) future::plan(strategy = future::multisession)
+      if (parplan) {
+        oplan <- future::plan(strategy = future::multisession)
+        on.exit(future::plan(oplan), add = TRUE)      
+      }
       bootsamps <- future.apply::future_lapply(X=seq_len(B), FUN=psi.only,f=f, qdata=qdata, intvals=intvals,
                           expnms=expnms, rr=rr, degree=degree, nids=nids, id=id,
                           weights=qdata$weights,MCsize=MCsize, hasintercept = hasintercept,
                           future.seed=TRUE,
                           ...)
 
-      if(parplan) future::plan(strategy = future::transparent)
+      
     }else{
       bootsamps <- lapply(X=seq_len(B), FUN=psi.only,f=f, qdata=qdata, intvals=intvals,
                           expnms=expnms, rr=rr, degree=degree, nids=nids, id=id,
@@ -755,7 +757,6 @@ qgcomp.boot <- function(
         res$zstat <- tstat
         res$pval <- pvalz
       }
-    attr(res, "class") <- "qgcompfit"
     res
 }
 

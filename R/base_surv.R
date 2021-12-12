@@ -489,7 +489,7 @@ qgcomp.cox.boot <- function(f, data, expnms=NULL, q=4, breaks=NULL,
   #'  to 2 decimal places).
   #' @param seed integer or NULL: random number seed for replicable bootstrap results
   #' @param parallel logical (default FALSE): use future package to speed up bootstrapping
-  #' @param parplan (logical, default=FALSE) automatically set future::plan to plan(multiprocess) (and set to plan(invisible) after bootstrapping)
+  #' @param parplan (logical, default=FALSE) automatically set future::plan to plan(multisession) (and set to existing plan, if any, after bootstrapping)
   #' @param ... arguments to glm (e.g. family)
   #' @seealso \code{\link[qgcomp]{qgcomp.cox.noboot}}, and \code{\link[qgcomp]{qgcomp}}
   #' @return a qgcompfit object, which contains information about the effect
@@ -517,7 +517,7 @@ qgcomp.cox.boot <- function(f, data, expnms=NULL, q=4, breaks=NULL,
   #' 
   #' # using future package, marginalizing over confounder z
   #' (obj3 <- qgcomp.cox.boot(survival::Surv(time, d)~x1 + x2 + z, expnms = expnms, data = dat, 
-  #'                          B=1000, MCsize=20000, parallel=TRUE))
+  #'                          B=1000, MCsize=20000, parallel=TRUE, parplan=TRUE))
   #' # non-constant hazard ratio, non-linear terms
   #' (obj4 <- qgcomp.cox.boot(survival::Surv(time, d)~factor(x1) + splines::bs(x2) + z, 
   #'                          expnms = expnms, data = dat, 
@@ -623,13 +623,16 @@ qgcomp.cox.boot <- function(f, data, expnms=NULL, q=4, breaks=NULL,
   set.seed(seed)
   if(parallel){
     #Sys.setenv(R_FUTURE_SUPPORTSMULTICORE_UNSTABLE="quiet")
-    if(parplan) future::plan(strategy = future::multisession)
+    if (parplan) {
+        oplan <- future::plan(strategy = future::multisession)
+        on.exit(future::plan(oplan), add = TRUE)
+      }
     bootsamps <- future.apply::future_lapply(X=seq_len(B), FUN=psi.only,
                                     f=newform, qdata=qdata, intvals=intvals, 
                                     expnms=expnms, degree=degree, nids=nids, id=id,
                                     future.seed=TRUE,
                                     weights=qdata$weights, MCsize=MCsize, ...)
-    if(parplan) future::plan(strategy = future::transparent)
+    
   }else {
     bootsamps <- lapply(X=seq_len(B), FUN=psi.only,
                         f=newform, qdata=qdata, intvals=intvals, 

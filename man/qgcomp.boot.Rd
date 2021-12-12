@@ -79,7 +79,7 @@ be important with binary or count outcomes.}
 
 \item{parallel}{use (safe) parallel processing from the future and future.apply packages}
 
-\item{parplan}{(logical, default=FALSE) automatically set future::plan to plan(multiprocess) (and set to plan(invisible) after bootstrapping)}
+\item{parplan}{(logical, default=FALSE) automatically set future::plan to plan(multisession) (and set to existing plan, if any, after bootstrapping)}
 
 \item{...}{arguments to glm (e.g. family)}
 }
@@ -190,7 +190,7 @@ res2
 
 qgcomp.boot(y ~ z + x1iqr + I(x2iqr>0.1) + I(x2>0.4) + I(x2>0.9),
   family="binomial", expnms = c('x1iqr', 'x2iqr'), data=dat, q=NULL, rr=TRUE, B=200,
-  degree=2, parallel=TRUE)
+  degree=2, parallel=TRUE, parplan=TRUE)
 
 
 # weighted model

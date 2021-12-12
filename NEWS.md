@@ -1,3 +1,11 @@
+# qgcomp v2.8.5
+## Major changes
+- None
+
+## Minor changes
+- Handling of parallel processing through futures: bringing in line with package recommendations and planned deprecations.
+- Documentation changes
+
 # qgcomp v2.8.0
 ## Major changes
 - Exposed simulation functions to the user

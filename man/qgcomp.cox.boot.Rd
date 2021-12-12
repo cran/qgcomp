@@ -76,7 +76,7 @@ is quadratic.}
 
 \item{parallel}{logical (default FALSE): use future package to speed up bootstrapping}
 
-\item{parplan}{(logical, default=FALSE) automatically set future::plan to plan(multiprocess) (and set to plan(invisible) after bootstrapping)}
+\item{parplan}{(logical, default=FALSE) automatically set future::plan to plan(multisession) (and set to existing plan, if any, after bootstrapping)}
 
 \item{...}{arguments to glm (e.g. family)}
 }
@@ -135,7 +135,7 @@ f = survival::Surv(time, d)~x1 + x2
 
 # using future package, marginalizing over confounder z
 (obj3 <- qgcomp.cox.boot(survival::Surv(time, d)~x1 + x2 + z, expnms = expnms, data = dat, 
-                         B=1000, MCsize=20000, parallel=TRUE))
+                         B=1000, MCsize=20000, parallel=TRUE, parplan=TRUE))
 # non-constant hazard ratio, non-linear terms
 (obj4 <- qgcomp.cox.boot(survival::Surv(time, d)~factor(x1) + splines::bs(x2) + z, 
                          expnms = expnms, data = dat, 
