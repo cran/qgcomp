@@ -1,7 +1,7 @@
 Package: qgcomp
 Title: Quantile G-Computation
-Version: 2.8.5
-Date: 2021-12-12
+Version: 2.8.6
+Date: 2022-01-24
 Authors@R: 
     person("Alexander", "Keil", , "akeil@unc.edu", role = c("aut", "cre"))
 Author: Alexander Keil [aut, cre]
@@ -28,6 +28,6 @@ Encoding: UTF-8
 Language: en-US
 RoxygenNote: 7.1.2
 NeedsCompilation: no
-Packaged: 2021-12-12 16:40:15 UTC; akeil
+Packaged: 2022-01-24 14:36:46 UTC; akeil
 Repository: CRAN
-Date/Publication: 2021-12-12 17:20:02 UTC
+Date/Publication: 2022-01-24 15:12:49 UTC

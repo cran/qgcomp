@@ -1,3 +1,13 @@
+# qgcomp v2.8.6
+## Major changes
+- None
+
+## Minor changes
+- None
+
+## Bug fixes
+- Fixed misuse of "all.equal" in tests
+
 # qgcomp v2.8.5
 ## Major changes
 - None

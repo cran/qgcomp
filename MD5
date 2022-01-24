@@ -1,6 +1,6 @@
-b6afd953f51f1073a6caf1c5b4228b0a *DESCRIPTION
+e13349f6aefd479332a68dba21577912 *DESCRIPTION
 45b94bbaaed7650e00a75f4dd64263ab *NAMESPACE
-45a9e6e780256018a5dbca48d618d380 *NEWS.md
+f783c20d7282a3c288b12f7da8ae1bd4 *NEWS.md
 a97b917ce3e1d74e4f7e04451f01f9bb *R/base.R
 7bb09da9bf7f3d5610f6f4d8854ffc15 *R/base_bounds.R
 ad02dc8706a119714c07e79b625cc3c5 *R/base_experimental.R
@@ -14,12 +14,12 @@ f1ba7eb98effce3834743d0d94c10ce1 *R/base_surv.R
 c140b5c60f253c3651016aa3f5af5ca0 *R/base_utility.R
 2438f922c307df5aa315664442190186 *R/base_zi.R
 daf60f4a2a0ea425235870c7988de990 *R/data.R
-c6010d73c541566f61b6c5eb7b291cc9 *README.md
+2c9130c388ca213e230b2bd1a48175db *README.md
 88d4e09aa6fa6930befc110a511d079c *build/vignette.rds
 c52baf72a0ded2860f1fc7bcc0a44587 *data/metals.RData
 d9d367fdeeccbc78a57d67bb0bacfdeb *inst/doc/qgcomp-vignette.R
 40b9e2cdd5cbc36fd96d19d1b51a6004 *inst/doc/qgcomp-vignette.Rmd
-90da432a06376c82f56483b3d5bdef73 *inst/doc/qgcomp-vignette.html
+50c7b405d40e9cc853c22efb428144da *inst/doc/qgcomp-vignette.html
 dcba3c6855f754b7494b841d285e3197 *inst/fig/fighex.png
 d4f062a438e514faa03a0ae2c9f38a12 *inst/fig/fighex_social.png
 a728173c2b39a9a95c900810feca0c26 *inst/fig/res1.png
@@ -61,7 +61,7 @@ ce81e1ffbeb2e8f4d0ebda7b11e2156f *man/tidy.qgcompfit.Rd
 adafbb49bfd55970000807640f274224 *man/vc_comb.Rd
 21be15986a04cf91ac6c94d79806917b *man/zimsm.fit.Rd
 fb7e649e05de6cc54a94061cf824942a *man/zimsm.fit.control.Rd
-a5c483300a969c7486c668dd4ffc0255 *tests/test_asis.R
+595658bb3c68156820622aaad6a5d5a6 *tests/test_asis.R
 c7c524d4e7a45d818706709a57a6529d *tests/test_basics.R
 4fe496ca8422555ef455b43f27240f77 *tests/test_bayesqgcomp.R
 3adbce145f25a6436905f10c97898295 *tests/test_boot_ints.R
