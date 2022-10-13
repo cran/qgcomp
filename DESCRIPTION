@@ -1,11 +1,9 @@
 Package: qgcomp
 Title: Quantile G-Computation
-Version: 2.8.6
-Date: 2022-01-24
+Version: 2.9.0
+Date: 2022-10-12
 Authors@R: 
-    person("Alexander", "Keil", , "akeil@unc.edu", role = c("aut", "cre"))
-Author: Alexander Keil [aut, cre]
-Maintainer: Alexander Keil <akeil@unc.edu>
+    person("Alexander", "Keil", , "alex.keil@nih.gov", role = c("aut", "cre"))
 Description: G-computation for a set of time-fixed exposures with
     quantile-based basis functions, possibly under linearity and
     homogeneity assumptions. This approach estimates a regression line
@@ -26,8 +24,10 @@ Suggests: broom, devtools, knitr, markdown, MASS, mice
 VignetteBuilder: knitr
 Encoding: UTF-8
 Language: en-US
-RoxygenNote: 7.1.2
+RoxygenNote: 7.2.1
 NeedsCompilation: no
-Packaged: 2022-01-24 14:36:46 UTC; akeil
+Packaged: 2022-10-12 18:56:48 UTC; keilap
+Author: Alexander Keil [aut, cre]
+Maintainer: Alexander Keil <alex.keil@nih.gov>
 Repository: CRAN
-Date/Publication: 2022-01-24 15:12:49 UTC
+Date/Publication: 2022-10-13 08:30:07 UTC

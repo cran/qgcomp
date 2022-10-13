@@ -1,3 +1,16 @@
+# qgcomp v2.9.0
+## Major changes
+- None
+
+## Minor changes
+- Replace qgcomp.partials with re-factored version with new quantization defaults
+
+## Bug fixes
+- Fixed error https://github.com/alexpkeil1/qgcomp/issues/26
+- Clarifed error message in https://github.com/alexpkeil1/qgcomp/issues/14
+- Created new hidden functions for testing that will eventually replace qgcomp.partials
+
+
 # qgcomp v2.8.6
 ## Major changes
 - None

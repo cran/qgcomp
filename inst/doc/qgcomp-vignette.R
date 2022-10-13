@@ -354,19 +354,23 @@ plot(qc.fit.adj)
 
 ## ----pe2----------------------------------------------------------------------
 # 40/60% training/validation split
-set.seed(1231124)
+set.seed(123211)
 trainidx <- sample(1:nrow(metals), round(nrow(metals)*0.4))
 valididx <- setdiff(1:nrow(metals),trainidx)
 traindata <- metals[trainidx,]
 validdata <- metals[valididx,]
-dim(traindata) # 181 observations = 40% of total
-dim(validdata) # 271 observations = 60% of total
+dim(traindata) # 40% of total
+dim(validdata) # 60% of total
 
 ## ----pe3a, fig.height=5, fig.width=7.5----------------------------------------
-	
+    
 
-splitres <- qgcomp.partials(fun="qgcomp.noboot", f=y~., q=4, 
-           traindata=traindata[,c(Xnm, covars, "y")],validdata=validdata[,c(Xnm, covars, "y")], expnms=Xnm)
+splitres <- qgcomp.partials(
+  fun="qgcomp.noboot", f=y~., q=4, 
+  traindata=traindata[,c(Xnm, covars, "y")],validdata=validdata[,c(Xnm, covars, "y")], expnms=Xnm,
+  bayes=FALSE, 
+  .fixbreaks = TRUE
+  )
 splitres
 
 ## ----pe3b, fig.height=5, fig.width=7.5----------------------------------------
