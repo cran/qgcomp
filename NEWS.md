@@ -1,3 +1,13 @@
+# qgcomp v2.10.0
+## Major changes
+- None
+
+## Minor changes
+- qgcomp.partials now allows quantile definitions based on the training and validation data, which treats the quantiles as fixed values across both datasets and leads to more stable results in small samples (set via .globalbreaks = TRUE in qgcomp.partials)
+
+## Bug fixes
+- Fixed major bug in qgcomp.partials: https://github.com/alexpkeil1/qgcomp/issues/28
+
 # qgcomp v2.9.0
 ## Major changes
 - None

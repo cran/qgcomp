@@ -369,7 +369,7 @@ splitres <- qgcomp.partials(
   fun="qgcomp.noboot", f=y~., q=4, 
   traindata=traindata[,c(Xnm, covars, "y")],validdata=validdata[,c(Xnm, covars, "y")], expnms=Xnm,
   bayes=FALSE, 
-  .fixbreaks = TRUE
+  .fixbreaks = TRUE, .globalbreaks=FALSE
   )
 splitres
 
@@ -377,6 +377,17 @@ splitres
 
 plot(splitres$pos.fit)
 
+
+## ----pe3c, fig.height=5, fig.width=7.5----------------------------------------
+    
+
+splitres_alt <- qgcomp.partials(
+  fun="qgcomp.noboot", f=y~., q=4, 
+  traindata=traindata[,c(Xnm, covars, "y")],validdata=validdata[,c(Xnm, covars, "y")], expnms=Xnm,
+  bayes=FALSE, 
+  .fixbreaks = TRUE, .globalbreaks=TRUE
+  )
+splitres_alt
 
 ## ----pe4a---------------------------------------------------------------------
 
