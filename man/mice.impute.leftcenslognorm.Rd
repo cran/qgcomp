@@ -2,6 +2,7 @@
 % Please edit documentation in R/base_extensions.R
 \name{mice.impute.leftcenslognorm}
 \alias{mice.impute.leftcenslognorm}
+\alias{mice.impute.tobit}
 \title{Imputation for limits of detection problems}
 \usage{
 mice.impute.leftcenslognorm(
@@ -13,6 +14,8 @@ mice.impute.leftcenslognorm(
   debug = FALSE,
   ...
 )
+
+mice.impute.tobit(y, ry, x, wy = NULL, lod = NULL, debug = FALSE, ...)
 }
 \arguments{
 \item{y}{Vector to be imputed}
@@ -34,14 +37,14 @@ Vector with imputed data, same type as y, and of length sum(wy)
 }
 \description{
 This function integrates with \code{\link[mice]{mice}} to impute values below the LOD using a left
-censored log-normal distribution.
+censored log-normal distribution. Note that "tobit" is an alias that uses a familiar term for this model.
 }
 \details{
 While this function has utility far beyond qgcomp,
 it is included in the qgcomp package because it will be useful for a variety of
 settings in which qgcomp is useful. Note that LOD problems where the LOD is small,
-and the \code{q} parameter from \code{\link[qgcomp]{qgcomp.noboot}} or
-\code{\link[qgcomp]{qgcomp.boot}} is not large, the LOD may be below the lowest
+and the \code{q} parameter from \code{\link[qgcomp]{qgcomp.glm.noboot}} or
+\code{\link[qgcomp]{qgcomp.glm.boot}} is not large, the LOD may be below the lowest
 quantile cutpoint which will yield identical datasets from the MICE procedure in terms
 of quantized exposure data. If only exposures are missing, and they have low LODs, then
 there will be no benefit in qgcomp from using MICE rather than imputing some small value
@@ -51,12 +54,12 @@ below the LOD.
 N = 100
 set.seed(123)
 dat <- data.frame(y=runif(N), x1=runif(N), x2=runif(N), z=runif(N))
-true = qgcomp.noboot(f=y ~ z + x1 + x2, expnms = c('x1', 'x2'),
+true = qgcomp.glm.noboot(f=y ~ z + x1 + x2, expnms = c('x1', 'x2'),
         data=dat, q=2, family=gaussian())
 mdat <- dat
 mdat$x1 = ifelse(mdat$x1>0.5, mdat$x1, NA)
 mdat$x2 = ifelse(mdat$x2>0.75, mdat$x2, NA)
-cc <- qgcomp.noboot(f=y ~ z + x1 + x2, expnms = c('x1', 'x2'),
+cc <- qgcomp.glm.noboot(f=y ~ z + x1 + x2, expnms = c('x1', 'x2'),
        data=mdat[complete.cases(mdat),], q=2, family=gaussian())
 
 \dontrun{
@@ -69,10 +72,10 @@ impdat = mice(data = mdat,
   method = c("", "leftcenslognorm", "leftcenslognorm", ""),
   lod=c(NA, 0.5, 0.75, NA), debug=FALSE, m=10)
 qc.fit.imp <- list(
-  call = call("qgcomp.noboot(y~., expnms = c('x1', 'x2'), family=gaussian())"),
+  call = call("qgcomp.glm.noboot(y~., expnms = c('x1', 'x2'), family=gaussian())"),
   call1 = impdat$call,
   nmis = impdat$nmis,
-  analyses = lapply(1:10, function(x) qgcomp.noboot(y~., expnms = c("x1", "x2"),
+  analyses = lapply(1:10, function(x) qgcomp.glm.noboot(y~., expnms = c("x1", "x2"),
     data=complete(impdat, x), family=gaussian(), bayes=TRUE))
  )
 #alternative way to specify limits of detection (useful if not all observations have same limit)
@@ -83,10 +86,10 @@ impdat_alt = mice(data = mdat,
   method = c("", "leftcenslognorm", "leftcenslognorm", ""),
   lod=lodlist, debug=FALSE, m=10)
 qc.fit.imp_alt <- list(
-  call = call("qgcomp.noboot(y~., expnms = c('x1', 'x2'), family=gaussian())"),
+  call = call("qgcomp.glm.noboot(y~., expnms = c('x1', 'x2'), family=gaussian())"),
   call1 = impdat_alt$call,
   nmis = impdat_alt$nmis,
-  analyses = lapply(1:10, function(x) qgcomp.noboot(y~., expnms = c("x1", "x2"),
+  analyses = lapply(1:10, function(x) qgcomp.glm.noboot(y~., expnms = c("x1", "x2"),
     data=complete(impdat_alt, x), family=gaussian(), bayes=TRUE))
 )
 obj = pool(as.mira(qc.fit.imp))
@@ -110,11 +113,26 @@ library(ggplot2)
 ggplot(data=expwts)+ theme_classic() +
   geom_point(aes(x=Exposure, y=Weight)) +
   geom_hline(aes(yintercept=0))
+  
+# this function can be used to impute from an intercept only model
+# but you need to "trick" mice to bypass checks for collinearity by including
+# a variable that does not need to have values imputed (here, y).
+# The internal collinearity checks by the mice package remove collinear variables
+# and then throws an error if no predictor variabls are retained. Here, the 
+# trick is to use the "predictorMatrix" parameter to "impute" the non-missing
+# variable y using x1 (which does nothing), and remove all predictors from the model for x1.
+# This function only imputes x1 from a log normal distribution.
 
+impdat2 = mice(data = mdat[,c("y","x1")],
+  method = c("", "tobit"), remove.collinear=FALSE,
+  lod=c(NA, 0.5), debug=FALSE, m=1, 
+  maxit=1, # maxit=1 because there is only 1 variable to impute
+  predictorMatrix = as.matrix(rbind(c(0,1), c(0,0))))
+plot(density(complete(impdat2, 1)$x1))
 
 # now with survival data (very similar)
 impdat = mice(data = mdat,
-  method = c("", "leftcenslognorm", "leftcenslognorm", ""),
+  method = c("", "tobit", "tobit", ""),
   lod=c(NA, 0.5, 0.75, NA), debug=FALSE)
 qc.fit.imp <- list(
   call = call("qgcomp.cox.noboot(Surv(y)~., expnms = c('x1', 'x2'))"),

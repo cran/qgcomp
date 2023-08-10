@@ -2,12 +2,12 @@
 % Please edit documentation in R/base_bounds.R
 \name{pointwisebound.noboot}
 \alias{pointwisebound.noboot}
-\title{Estimating pointwise comparisons for qgcomp.noboot objects}
+\title{Estimating pointwise comparisons for qgcomp.glm.noboot objects}
 \usage{
 pointwisebound.noboot(x, alpha = 0.05, pointwiseref = 1)
 }
 \arguments{
-\item{x}{"qgcompfit" object from \code{qgcomp.noboot},}
+\item{x}{"qgcompfit" object from \code{qgcomp.glm.noboot},}
 
 \item{alpha}{alpha level for confidence intervals}
 
@@ -33,15 +33,19 @@ and the standard error of the mean difference (link scale) for pointwise compari
 The comparison of interest following a qgcomp fit is often comparisons of model
 predictions at various values of the joint-exposures (e.g. expected outcome at all exposures
 at the 1st quartile vs. the 3rd quartile). The expected outcome at a given joint exposure
-and at a given level of non-exposure covariates (W) is
+and at a given level of non-exposure covariates (W=w) is
 given as E(Y|S,W=w), where S takes on integer values 0 to q-1. Thus, comparisons are of the type
 E(Y|S=s,W=w) - E(Y|S=s2,W=w) where s and s2 are two different values of the joint exposures (e.g. 0 and 2).
 This function yields E(Y|S,W=w) as well as E(Y|S=s,W=w) - E(Y|S=p,W=w) where s is any value of S and p is
 the value chosen via "pointwise ref" - e.g. for binomial variables this will equal the risk/
 prevalence difference at all values of S, with the referent category S=p-1. For the non-boostrapped
-version of quantile g-computation (under a linear model)
+version of quantile g-computation (under a linear model). Note that w is taken to be the referent level of covariates
+so that if meaningful values of E(Y|S,W=w) and E(Y|S=s,W=w) - E(Y|S=p,W=w) are desired,
+then it is advisable to set the referent levels of W to meaningful values. This
+can be done by, e.g. centering continuous age so that the predictions are made
+at the population mean age, rather than age 0.
 
-Note that function only works with standard "qgcompfit" objects from \code{qgcomp.noboot} (so it doesn't work
+Note that function only works with standard "qgcompfit" objects from \code{qgcomp.glm.noboot} (so it doesn't work
 with zero inflated, hurdle, or Cox models)
 
 Variance for the overall effect estimate is given by:
@@ -67,29 +71,30 @@ n = 100
 dat <- data.frame(x1=(x1 <- runif(n)), x2=(x2 <- runif(n)), 
                   x3=(x3 <- runif(n)), z=(z <- runif(n)),
                   y=rnorm(n)+x1 + x2 - x3 +z)
-linear model for continuous outcome
-ft <- qgcomp.noboot(y ~ z + x1 + x2 + x3, 
+# linear model for continuous outcome
+ft <- qgcomp.glm.noboot(y ~ z + x1 + x2 + x3, 
        expnms=c('x1','x2','x3'), data=dat, q=10)
-ft2 <- qgcomp.boot(y ~ z + x1 + x2 + x3, 
+ft2 <- qgcomp.glm.boot(y ~ z + x1 + x2 + x3, 
         expnms=c('x1','x2','x3'), data=dat, q=10)
 pointwisebound.noboot(ft, alpha=0.05, pointwiseref=3)
 pointwisebound.boot(ft2, alpha=0.05, pointwiseref=3)
 dat <- data.frame(x1=(x1 <- runif(n)), x2=(x2 <- runif(n)), 
                    x3=(x3 <- runif(n)), z=(z <- runif(n)),
                   y=rbinom(n, 1, 1/(1+exp(-(x1 + x2 - x3 +z)))))
-glms for binary outcome
-ft <- qgcomp.noboot(y ~ z + x1 + x2 + x3, 
+# glms for binary outcome, centering covariate to a potentially more meaningful value
+dat$zcen = dat$z - mean(dat$z)
+ft <- qgcomp.glm.noboot(y ~ zcen + x1 + x2 + x3, 
         expnms=c('x1','x2','x3'), data=dat, q=10, family=binomial())
-ft2 <- qgcomp.boot(y ~ z + x1 + x2 + x3, 
+ft2 <- qgcomp.glm.boot(y ~ zcen + x1 + x2 + x3, 
         expnms=c('x1','x2','x3'), data=dat, q=10, family=binomial())
 pointwisebound.noboot(ft, alpha=0.05, pointwiseref=3)
 pointwisebound.boot(ft2, alpha=0.05, pointwiseref=3)
 dat$z = as.factor(sample(1:3, n, replace=TRUE))
-ftf <- qgcomp.noboot(y ~ z + x1 + x2 + x3, 
+ftf <- qgcomp.glm.noboot(y ~ zcen + x1 + x2 + x3, 
        expnms=c('x1','x2','x3'), data=dat, q=10, family=binomial())
 pointwisebound.noboot(ftf, alpha=0.05, pointwiseref=3)
 }
 }
 \seealso{
-\code{\link[qgcomp]{qgcomp.noboot}}, \code{\link[qgcomp]{pointwisebound.boot}}
+\code{\link[qgcomp]{qgcomp.glm.noboot}}, \code{\link[qgcomp]{pointwisebound.boot}}
 }

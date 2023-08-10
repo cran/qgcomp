@@ -1,5 +1,19 @@
 
 
+.pointwise.multinomial <- function(q, py, se.diff, alpha, pwr){
+  stop("Not yet implemented")
+  # mean, mean differences
+  data.frame(quantile= (seq_len(q)) - 1,
+             quantile.midpoint=((seq_len(q)) - 1 + 0.5)/(q),
+             hx = py,
+             mean.diff = py - py[pwr],
+             se.diff = se.diff, # standard error on link scale
+             ll.diff =  py - py[pwr] + qnorm(alpha/2) * se.diff,
+             ul.diff =  py - py[pwr] + qnorm(1-alpha/2) * se.diff
+  )
+}
+
+
 
 .logit <- function(p) log(p) - log(1-p)
 .expit <- function(mu) 1/(1+exp(-mu))
@@ -156,7 +170,7 @@
 
 
 ############ pointwise boot ############
-#' @title Estimating pointwise comparisons for qgcomp.boot objects
+#' @title Estimating pointwise comparisons for qgcomp.glm.boot objects
 #'
 #' @description Calculates: expected outcome (on the link scale), mean difference (link scale)
 #' and the standard error of the mean difference (link scale) for pointwise comparisons
@@ -182,7 +196,7 @@
 #' regression line given by E(Y|S,W=w), where w is a vector of medians of W (i.e. predictions
 #' are made at the median value of all covariates).
 #'
-#' @param x "qgcompfit" object from `qgcomp.boot`,
+#' @param x "qgcompfit" object from `qgcomp.glm.boot`,
 #' @param alpha alpha level for confidence intervals
 #' @param pointwiseref referent quantile (e.g. 1 uses the lowest joint-exposure category as
 #' the referent category for calculating all mean differences/standard deviations)
@@ -193,7 +207,7 @@
 #'  \item{se....: }{the stndard error of the effect measure}
 #'  \item{ul..../ll....: }{Confidence bounds for the effect measure, and bounds centered at the linear predictor (for plotting purposes)}
 #' }
-#' @seealso \code{\link[qgcomp]{qgcomp.boot}}, \code{\link[qgcomp]{pointwisebound.noboot}}
+#' @seealso \code{\link[qgcomp]{qgcomp.glm.boot}}, \code{\link[qgcomp]{pointwisebound.noboot}}
 #' @export
 #' @examples
 #' set.seed(12)
@@ -202,12 +216,15 @@
 #' # non-linear model for continuous outcome
 #' dat <- data.frame(x1=(x1 <- runif(100)), x2=runif(100), x3=runif(100), z=runif(100),
 #'                   y=runif(100)+x1+x1^2)
-#' ft <- qgcomp.boot(y ~ z + x1 + x2 + x3, expnms=c('x1','x2','x3'), data=dat, q=10)
+#' ft <- qgcomp.glm.boot(y ~ z + x1 + x2 + x3, expnms=c('x1','x2','x3'), data=dat, q=10)
 #' pointwisebound.boot(ft, alpha=0.05, pointwiseref=3)
 #' }
 pointwisebound.boot <- function(x, pointwiseref=1, alpha=0.05){
   if(!x$bootstrap || inherits(x, "survqgcompfit")){
     stop("This function does not work with this type of qgcomp fit")
+  }
+  if(inherits(x, "qgcompmultfit")){
+    stop("Not yet implemented")
   }
   #link = x$fit$family$link
   link = x$msmfit$family$link
@@ -247,7 +264,7 @@ pointwisebound.boot <- function(x, pointwiseref=1, alpha=0.05){
 
 
 ############ pointwise noboot ############
-#' @title Estimating pointwise comparisons for qgcomp.noboot objects
+#' @title Estimating pointwise comparisons for qgcomp.glm.noboot objects
 #'
 #' @description Calculates: expected outcome (on the link scale), mean difference (link scale)
 #' and the standard error of the mean difference (link scale) for pointwise comparisons
@@ -255,15 +272,19 @@ pointwisebound.boot <- function(x, pointwiseref=1, alpha=0.05){
 #' @details The comparison of interest following a qgcomp fit is often comparisons of model
 #' predictions at various values of the joint-exposures (e.g. expected outcome at all exposures
 #' at the 1st quartile vs. the 3rd quartile). The expected outcome at a given joint exposure
-#' and at a given level of non-exposure covariates (W) is
+#' and at a given level of non-exposure covariates (W=w) is
 #' given as E(Y|S,W=w), where S takes on integer values 0 to q-1. Thus, comparisons are of the type
 #' E(Y|S=s,W=w) - E(Y|S=s2,W=w) where s and s2 are two different values of the joint exposures (e.g. 0 and 2).
 #' This function yields E(Y|S,W=w) as well as E(Y|S=s,W=w) - E(Y|S=p,W=w) where s is any value of S and p is
 #' the value chosen via "pointwise ref" - e.g. for binomial variables this will equal the risk/
 #' prevalence difference at all values of S, with the referent category S=p-1. For the non-boostrapped
-#' version of quantile g-computation (under a linear model)
+#' version of quantile g-computation (under a linear model). Note that w is taken to be the referent level of covariates
+#' so that if meaningful values of E(Y|S,W=w) and E(Y|S=s,W=w) - E(Y|S=p,W=w) are desired,
+#' then it is advisable to set the referent levels of W to meaningful values. This
+#' can be done by, e.g. centering continuous age so that the predictions are made
+#' at the population mean age, rather than age 0.
 #'
-#' Note that function only works with standard "qgcompfit" objects from `qgcomp.noboot` (so it doesn't work
+#' Note that function only works with standard "qgcompfit" objects from `qgcomp.glm.noboot` (so it doesn't work
 #' with zero inflated, hurdle, or Cox models)
 #'
 #' Variance for the overall effect estimate is given by:
@@ -282,7 +303,7 @@ pointwisebound.boot <- function(x, pointwiseref=1, alpha=0.05){
 #' This variance is used to create pointwise confidence intervals via a normal approximation:
 #' (e.g. upper 95% CI = psi + variance*1.96)
 #'
-#' @param x "qgcompfit" object from `qgcomp.noboot`,
+#' @param x "qgcompfit" object from `qgcomp.glm.noboot`,
 #' @param alpha alpha level for confidence intervals
 #' @param pointwiseref referent quantile (e.g. 1 uses the lowest joint-exposure category as
 #' the referent category for calculating all mean differences/standard deviations)
@@ -295,7 +316,7 @@ pointwisebound.boot <- function(x, pointwiseref=1, alpha=0.05){
 #'  \item{se....: }{the stndard error of the effect measure}
 #'  \item{ul..../ll....: }{Confidence bounds for the effect measure}
 #' }
-#' @seealso \code{\link[qgcomp]{qgcomp.noboot}}, \code{\link[qgcomp]{pointwisebound.boot}}
+#' @seealso \code{\link[qgcomp]{qgcomp.glm.noboot}}, \code{\link[qgcomp]{pointwisebound.boot}}
 #' @export
 #' @examples
 #' set.seed(12)
@@ -304,52 +325,75 @@ pointwisebound.boot <- function(x, pointwiseref=1, alpha=0.05){
 #' dat <- data.frame(x1=(x1 <- runif(n)), x2=(x2 <- runif(n)), 
 #'                   x3=(x3 <- runif(n)), z=(z <- runif(n)),
 #'                   y=rnorm(n)+x1 + x2 - x3 +z)
-#' linear model for continuous outcome
-#' ft <- qgcomp.noboot(y ~ z + x1 + x2 + x3, 
+#' # linear model for continuous outcome
+#' ft <- qgcomp.glm.noboot(y ~ z + x1 + x2 + x3, 
 #'        expnms=c('x1','x2','x3'), data=dat, q=10)
-#' ft2 <- qgcomp.boot(y ~ z + x1 + x2 + x3, 
+#' ft2 <- qgcomp.glm.boot(y ~ z + x1 + x2 + x3, 
 #'         expnms=c('x1','x2','x3'), data=dat, q=10)
 #' pointwisebound.noboot(ft, alpha=0.05, pointwiseref=3)
 #' pointwisebound.boot(ft2, alpha=0.05, pointwiseref=3)
 #' dat <- data.frame(x1=(x1 <- runif(n)), x2=(x2 <- runif(n)), 
 #'                    x3=(x3 <- runif(n)), z=(z <- runif(n)),
 #'                   y=rbinom(n, 1, 1/(1+exp(-(x1 + x2 - x3 +z)))))
-#' glms for binary outcome
-#' ft <- qgcomp.noboot(y ~ z + x1 + x2 + x3, 
+#' # glms for binary outcome, centering covariate to a potentially more meaningful value
+#' dat$zcen = dat$z - mean(dat$z)
+#' ft <- qgcomp.glm.noboot(y ~ zcen + x1 + x2 + x3, 
 #'         expnms=c('x1','x2','x3'), data=dat, q=10, family=binomial())
-#' ft2 <- qgcomp.boot(y ~ z + x1 + x2 + x3, 
+#' ft2 <- qgcomp.glm.boot(y ~ zcen + x1 + x2 + x3, 
 #'         expnms=c('x1','x2','x3'), data=dat, q=10, family=binomial())
 #' pointwisebound.noboot(ft, alpha=0.05, pointwiseref=3)
 #' pointwisebound.boot(ft2, alpha=0.05, pointwiseref=3)
 #' dat$z = as.factor(sample(1:3, n, replace=TRUE))
-#' ftf <- qgcomp.noboot(y ~ z + x1 + x2 + x3, 
+#' ftf <- qgcomp.glm.noboot(y ~ zcen + x1 + x2 + x3, 
 #'        expnms=c('x1','x2','x3'), data=dat, q=10, family=binomial())
 #' pointwisebound.noboot(ftf, alpha=0.05, pointwiseref=3)
 #' }
 pointwisebound.noboot <- function(x, alpha=0.05, pointwiseref=1){
   if(x$bootstrap || inherits(x, "ziqgcompfit") || inherits(x, "survqgcompfit")){
-    stop("This function is only for qgcomp.noboot objects")
+    stop("This function is only for qgcomp.glm.noboot objects")
+  }
+  #sediff <- function(qdiffj){
+  #  # gives standard deviation of pointwise difference on log scale (conditional)
+  #  se_comb(x$expnms, vcov(x$fit), grad = qdiffj)
+  #}
+  sediff <- function(qdiffj, labcolon=""){
+    # gives standard deviation of pointwise difference on log scale (conditional)
+    se_comb(paste0(labcolon,x$expnms), vcov(x$fit), grad = qdiffj)
   }
   q = x$q
   link = x$fit$family$link
   #link = x$msmfit$family$link
-  coefs = x$fit$coefficients
-  modmat = model.matrix(x$fit)
-  zvars = coefs[-which(names(coefs) %in% c("(Intercept)", x$expnms))]
-  #av = apply(modmat[,names(zvars), drop=FALSE],2, median)
-  # predict at median of non exposure variables
-  #py = cbind(rep(1, q), 0:(q-1), matrix(rep(av, q), byrow=TRUE, nrow = q)) %*% c(coef(x), zvars)
-  # partial prediction only
-  py = cbind(rep(1, q), 0:(q-1)) %*% c(coef(x))
+  #coefs = x$fit$coefficients
+  coefs = coef(x$fit)
   px = length(x$expnms)
-  sediff <- function(qdiffj){
-    # gives standard deviation of pointwise difference on log scale (conditional)
-    se_comb(x$expnms, vcov(x$fit), grad = rep(qdiffj, px))
-  }
   diffs = c(rev(seq_len(q-1)), 0:(q-1))
   qdiff = diffs[(q:(q*2-1)) - pointwiseref+1]
-  #se.diff = sapply(qdiff, sediff)
-  se.diff = vapply(qdiff, sediff, 0)
+  
+  if(inherits(x, "qgcompmultfit")){
+    stop("Not yet implemented")
+    zvars = coefs[-which(colnames(coefs) %in% c("(Intercept)", x$expnms)),]
+    msmdesign = cbind(rep(2:(x$nlevels+1), each=q), 0:(q-1))
+    labs = x$labs
+    cf = coef(x)
+    lbp = log(.get_baseline_prob_multinom(x))
+    py = numeric(nrow(msmdesign))
+    for(r in 1:length(py)){
+      designrow = msmdesign[r,]
+      lab = labs[designrow[1]]
+      whichco = paste0(lab, c(".(Intercept)", ".psi"))
+      logrr = cf[whichco] %*% c(1, designrow[2])
+      py[r] = lbp + logrr
+    }
+    # py
+    se.diffl = lapply(labs[-1], function(l) vapply(qdiff, sediff, 0,labcolon=paste0(l,":")))
+    se.diff = do.call(c,se.diffl)
+    #cbind(msmdesign, py, rep(qdiff, length(labs[-1])), se.diff)
+    
+  } else{
+    zvars = coefs[-which(names(coefs) %in% c("(Intercept)", x$expnms))]
+    py = cbind(rep(1, q), 0:(q-1)) %*% c(coef(x))
+    se.diff = vapply(qdiff, sediff, 0)
+  }
   res = switch(link,
                identity = .pointwise.lin(q, py, se.diff, alpha, pointwiseref),
                log = .pointwise.log(q, py, se.diff, alpha, pointwiseref),
@@ -385,7 +429,7 @@ pointwisebound.noboot <- function(x, alpha=0.05, pointwiseref=1){
 #' Cheng, Russell CH. "Bootstrapping simultaneous confidence bands."
 #' Proceedings of the Winter Simulation Conference, 2005.. IEEE, 2005.
 #'
-#' @param x "qgcompfit" object from `qgcomp.boot`,
+#' @param x "qgcompfit" object from `qgcomp.glm.boot`,
 #' @param alpha alpha level for confidence intervals
 #' @param pwonly logical: return only pointwise estimates (suppress simultaneous estimates)
 #' @return A data frame containing
@@ -397,21 +441,23 @@ pointwisebound.noboot <- function(x, alpha=0.05, pointwiseref=1){
 #' }
 #' The confidence bounds are either  "pointwise" (pw) and "simultaneous" (simul) confidence
 #' intervals at each each quantized value of all exposures.
-#' @seealso \code{\link[qgcomp]{qgcomp.boot}}
+#' @seealso \code{\link[qgcomp]{qgcomp.glm.boot}}
 #' @export
 #' @examples
 #' set.seed(12)
 #' \dontrun{
 #' dat <- data.frame(x1=(x1 <- runif(50)), x2=runif(50), x3=runif(50), z=runif(50),
 #'                   y=runif(50)+x1+x1^2)
-#' ft <- qgcomp.boot(y ~ z + x1 + x2 + x3, expnms=c('x1','x2','x3'), data=dat, q=5)
+#' ft <- qgcomp.glm.boot(y ~ z + x1 + x2 + x3, expnms=c('x1','x2','x3'), data=dat, q=5)
 #' modelbound.boot(ft, 0.05)
 #' }
 modelbound.boot <- function(x, alpha=0.05, pwonly=FALSE){
   if(!x$bootstrap || inherits(x, "survqgcompfit")){
     stop("This function does not work with this type of qgcomp fit")
   }
-  #link = x$fit$family$link
+  if(inherits(x, "qgcompmultfit")){
+    stop("Not yet implemented")
+  }
   link = x$msmfit$family$link
   if( inherits(x, "ziqgcompfit")){
     pwonly=TRUE
@@ -471,8 +517,8 @@ modelbound.boot <- function(x, alpha=0.05, pwonly=FALSE){
 
 
 modelbound.boot_old <- function(x, alpha=0.05, pwonly=FALSE){
-  if(!x$bootstrap) stop("This function is only for qgcomp.boot objects")
-  #x = qgcomp.boot(f=y ~ z + x1 + x2, expnms = c('x1', 'x2'), data=dat, q=4,family=gaussian(), B=10000, parallel = TRUE)
+  if(!x$bootstrap) stop("This function is only for qgcomp.glm.boot objects")
+  #x = qgcomp.glm.boot(f=y ~ z + x1 + x2, expnms = c('x1', 'x2'), data=dat, q=4,family=gaussian(), B=10000, parallel = TRUE)
   py = tapply(x$y.expectedmsm, x$index, mean)
   ycovmat = x$cov.yhat # bootstrap covariance matrix of E(y|x) from MSM
   pw.vars = diag(ycovmat)
@@ -519,7 +565,7 @@ modelbound.boot_old <- function(x, alpha=0.05, pwonly=FALSE){
 
 ############ old functions ############
 pointwisebound.boot_old <- function(x, alpha=0.05, pointwiseref=1){
-  if(!x$bootstrap) stop("This function is only for qgcomp.boot objects")
+  if(!x$bootstrap) stop("This function is only for qgcomp.glm.boot objects")
   # : error catching for other functions
 
   pwr = pointwiseref+0 # may break this in the future

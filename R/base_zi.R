@@ -1,5 +1,5 @@
 # zero inflation
-zimsm.fit.control <- function(
+zimsm_fit.control <- function(
   predmethod=c("components", "catprobs")
 ){
   #' @title Control of fitting parameters for zero inflated MSMs
@@ -19,9 +19,11 @@ zimsm.fit.control <- function(
   )
 }
 
+zimsm.fit.control = zimsm_fit.control
 
 
-zimsm.fit <- function(
+
+zimsm_fit <- function(
   f, 
   qdata, 
   intvals, 
@@ -34,7 +36,7 @@ zimsm.fit <- function(
   containmix=list(count=TRUE, zero=TRUE),
   bayes=FALSE,
   x=FALSE,
-  msmcontrol=zimsm.fit.control(),
+  msmcontrol=zimsm_fit.control(),
   ...){
   #' @title Secondary prediction method for the (zero-inflated) qgcomp MSM.
   #' @description this is an internal function called by 
@@ -75,7 +77,7 @@ zimsm.fit <- function(
   #' @param containmix named list of logical scalars with names "count" and "zero"
   #' @param bayes not used
   #' @param x keep design matrix? (logical)
-  #' @param msmcontrol named list from \code{\link[qgcomp]{zimsm.fit.control}}
+  #' @param msmcontrol named list from \code{\link[qgcomp]{zimsm_fit.control}}
   #' @param ... arguments to zeroinfl (e.g. dist)
   #' @seealso \code{\link[qgcomp]{qgcomp.cox.boot}}, and \code{\link[qgcomp]{qgcomp.cox.noboot}}
   #' @concept variance mixtures
@@ -89,7 +91,7 @@ zimsm.fit <- function(
   #' q = 4
   #' qdata = quantize(dat, q=q, expnms=expnms)$data
   #' f = y ~ x1 + x2 + z | 1
-  #' msmfit <- qgcomp:::zimsm.fit(f, qdata, intvals=(1:q)-1, expnms, main=TRUE,
+  #' msmfit <- zimsm_fit(f, qdata, intvals=(1:q)-1, expnms, main=TRUE,
   #'   degree=1, id=NULL, MCsize=10000, containmix=list(count=TRUE, zero=FALSE),  
   #'   x=FALSE)
   #' msmfit$msmfit
@@ -187,6 +189,7 @@ zimsm.fit <- function(
   res
 }
 
+zimsm.fit = zimsm_fit
 
 
 qgcomp.zi.noboot <- function(f, 
@@ -235,8 +238,7 @@ qgcomp.zi.noboot <- function(f,
   #' @param alpha alpha level for confidence limit calculation
   #' @param bayes not yet implemented
   #' @param ... arguments to zeroinfl (e.g. dist)
-  #' @seealso \code{\link[qgcomp]{qgcomp.zi.boot}},\code{\link[qgcomp]{qgcomp.noboot}}, 
-  #' \code{\link[qgcomp]{qgcomp.cox.noboot}},  and \code{\link[pscl]{zeroinfl}}
+  #' @family qgcomp_methods
   #' @return a qgcompfit object, which contains information about the effect
   #'  measure of interest (psi) and associated variance (var.psi), as well
   #'  as information on the model fit (fit) and information on the 
@@ -404,7 +406,7 @@ qgcomp.zi.boot <- function(f,
                            bayes=FALSE, 
                            parallel=FALSE, 
                            MCsize=10000, 
-                           msmcontrol=zimsm.fit.control(),
+                           msmcontrol=zimsm_fit.control(),
                            parplan = FALSE,
  ...
 ){
@@ -480,11 +482,10 @@ qgcomp.zi.boot <- function(f,
   #'  as needed to reduce simulation error to an acceptable magnitude (can compare psi coefficients for 
   #'  linear fits with qgcomp.zi.noboot to gain some intuition for the level of expected simulation 
   #'  error at a given value of MCsize)
-  #' @param msmcontrol named list from \code{\link[qgcomp]{zimsm.fit.control}}
+  #' @param msmcontrol named list from \code{\link[qgcomp]{zimsm_fit.control}}
   #' @param parplan (logical, default=FALSE) automatically set future::plan to plan(multisession) (and set to existing plan, if any, after bootstrapping)
   #' @param ... arguments to glm (e.g. family)
-  #' @seealso \code{\link[qgcomp]{qgcomp.zi.noboot}},\code{\link[qgcomp]{qgcomp.boot}}, 
-  #' \code{\link[qgcomp]{qgcomp.cox.boot}},  and \code{\link[pscl]{zeroinfl}}
+  #' @family qgcomp_methods
   #' @return a qgcompfit object, which contains information about the effect
   #'  measure of interest (psi) and associated variance (var.psi), as well
   #'  as information on the model fit (fit) and information on the 
@@ -625,7 +626,7 @@ qgcomp.zi.boot <- function(f,
     qdata$id__ <- seq_len(dim(qdata)[1])
   }
   ###
-  msmfit <- zimsm.fit(newform, qdata, intvals, expnms, main=TRUE,
+  msmfit <- zimsm_fit(newform, qdata, intvals, expnms, main=TRUE,
                       degree=degree, id=id,
                       weights=weights, 
                       MCsize=MCsize, containmix=containmix, 
@@ -648,7 +649,7 @@ qgcomp.zi.boot <- function(f,
     bootids <- data.frame(temp=sort(sample(unique(qdata[,id, drop=TRUE]), nids, replace = TRUE)))
     names(bootids) <- id
     qdata_ <- merge(qdata,bootids, by=id, all.x=FALSE, all.y=TRUE)
-    ft = zimsm.fit(f, qdata_, intvals, expnms, main=FALSE,
+    ft = zimsm_fit(f, qdata_, intvals, expnms, main=FALSE,
                    degree=degree, id=id,
                    weights=weights,
                    MCsize=MCsize, containmix=containmix, 

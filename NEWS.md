@@ -1,3 +1,19 @@
+# qgcomp v2.15.2
+## Major changes
+- Added multinomial models (qgcomp.multinomial.noboot and qgcomp.multinomial.boot)
+- Plot for multinomial models (qgcomp.multinomial.noboot only)
+- Changed qgcomp.boot to qgcomp.glm.boot and qgcomp.noboot to qgcomp.glm.noboot for clarity. The old functions still work (for now).
+
+## Minor changes
+- Mice function (mice.impute.leftcenslognorm) to allow empty prediction sets 
+- mice.impute.leftcenslognorm has been given an alias mice.impute.tobit
+- Added simulation of multinomial outcomes
+- Code-base hygiene
+
+## Bug fixes
+- Fixed some miscellaneous bugs in the `print` function for non-standard link functions.
+- Fixing bug in model pointwisebound.noboot that gave non-sense confidence intervals
+
 # qgcomp v2.10.0
 ## Major changes
 - None

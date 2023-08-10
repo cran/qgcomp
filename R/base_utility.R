@@ -42,6 +42,12 @@ zi <- function(){
   obj
 }
 
+# fake multinomial family function
+multinom_family <- function(){
+  obj = binomial(link="log")
+  obj$family="multinomial"
+  obj
+}
 
 
 se_comb <- function(expnms, covmat, grad=NULL){
@@ -75,16 +81,16 @@ se_comb <- function(expnms, covmat, grad=NULL){
   #' in expnms to the final standard error. For a linear combination, this is equal
   #' to a vector of ones (and is set automatically). Or can be calculated via the
   #' grad.poly procedure, in the case of coming up with proper weights when the combination
-  #' of expnms derives from a polynomial function (as in qgcomp.boot with degree>1).
+  #' of expnms derives from a polynomial function (as in qgcomp.glm.boot with degree>1).
   #'
   #' @export
   #' @examples
   #' vcov = rbind(c(1.2, .9),c(.9, 2.0))
   #' colnames(vcov) <- rownames(vcov) <- expnms <- c("x1", "x2")
-  #' qgcomp:::se_comb(expnms, vcov, c(1, 0))^2 # returns the given variance
-  #' qgcomp:::se_comb(expnms, vcov, c(1, 1)) # default linear MSM fit: all exposures
+  #' se_comb(expnms, vcov, c(1, 0))^2 # returns the given variance
+  #' se_comb(expnms, vcov, c(1, 1)) # default linear MSM fit: all exposures
   #' # have equal weight
-  #' qgcomp:::se_comb(expnms, vcov, c(.3, .1)) # used when one exposure contributes
+  #' se_comb(expnms, vcov, c(.3, .1)) # used when one exposure contributes
   #'   # to the overall fit more than others  = d(msmeffect)/dx
   
   if(!is.matrix(covmat)) {
@@ -133,6 +139,7 @@ vc_comb <- function(aname="(Intercept)", expnms, covmat, grad=NULL){
   #'
   #' @return A covariance matrix
   #
+  #' @export
   #' @examples
   #' vcov = rbind(c(0.010051348, -0.0039332248, -0.0036965571),
   #'              c(-0.003933225,  0.0051807876,  0.0007706792),
@@ -140,7 +147,7 @@ vc_comb <- function(aname="(Intercept)", expnms, covmat, grad=NULL){
   #' colnames(vcov) <- rownames(vcov) <- c("(Intercept)", "x1", "x2")
   #' expnms <- rownames(vcov)[2:3]
   #' aname = rownames(vcov)[1]
-  #' qgcomp:::vc_comb(aname, expnms, vcov) # returns the given covariance matrix
+  #' vc_comb(aname, expnms, vcov) # returns the given covariance matrix
   
   if(!is.matrix(covmat)) {
     nm <- names(covmat)
@@ -262,7 +269,7 @@ quantize <- function (data, expnms, q=4, breaks=NULL) {
 checknames <- function(terms){
   #' @title Check for valid model terms in a qgcomp fit
   #' @description This is an internal function called by \code{\link[qgcomp]{qgcomp}},
-  #'  \code{\link[qgcomp]{qgcomp.boot}}, and \code{\link[qgcomp]{qgcomp.noboot}},
+  #'  \code{\link[qgcomp]{qgcomp.glm.boot}}, and \code{\link[qgcomp]{qgcomp.glm.noboot}},
   #'  but is documented here for clarity. Generally, users will not need to call
   #'  this function directly. This function tries to determine whether there are
   #'  non-linear terms in the underlying model, which helps infer whether the
@@ -291,7 +298,13 @@ checknames <- function(terms){
   if(is.na(match("pos.size", nms))) res$pos.size = NULL
   if(is.na(match("neg.size", nms))) res$neg.size = NULL
   if(is.na(match("df", nms))) res$df = NULL
+  if(is.na(match("qx", nms))) res$qx = NULL
   attr(res, "class") <- c("qgcompfit", "list")
   res
 }
 
+.qgcompmult_object <- function(...){
+  res = .qgcomp_object(...)
+  attr(res, "class") <- c("qgcompmultfit", attr(res, "class"))
+  res
+}
