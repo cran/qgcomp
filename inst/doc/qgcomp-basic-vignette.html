@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>Basic topics for the qgcomp package: g-computation on exposure quantiles</title>
+<style type="text/css">
+/**
+ * Prism.s theme ported from highlight.js's xcode style
+ */
+pre code {
+  padding: 1em;
+}
+.token.comment {
+  color: #007400;
+}
+.token.punctuation {
+  color: #999;
+}
+.token.tag,
+.token.selector {
+  color: #aa0d91;
+}
+.token.boolean,
+.token.number,
+.token.constant,
+.token.symbol {
+  color: #1c00cf;
+}
+.token.property,
+.token.attr-name,
+.token.string,
+.token.char,
+.token.builtin {
+  color: #c41a16;
+}
+.token.inserted {
+  background-color: #ccffd8;
+}
+.token.deleted {
+  background-color: #ffebe9;
+}
+.token.operator,
+.token.entity,
+.token.url,
+.language-css .token.string,
+.style .token.string {
+  color: #9a6e3a;
+}
+.token.atrule,
+.token.attr-value,
+.token.keyword {
+  color: #836c28;
+}
+.token.function,
+.token.class-name {
+  color: #DD4A68;
+}
+.token.regex,
+.token.important,
+.token.variable {
+  color: #5c2699;
+}
+.token.important,
+.token.bold {
+  font-weight: bold;
+}
+.token.italic {
+  font-style: italic;
+}
+</style>
+<style type="text/css">
+body {
+  font-family: sans-serif;
+  max-width: 800px;
+  margin: auto;
+  padding: 1em;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+body, .footnotes, code { font-size: .9em; }
+li li { font-size: .95em; }
+*, *:before, *:after {
+  box-sizing: inherit;
+}
+pre, img { max-width: 100%; }
+pre, pre:hover {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+pre code {
+  display: block;
+  overflow-x: auto;
+}
+code { font-family: 'DejaVu Sans Mono', 'Droid Sans Mono', 'Lucida Console', Consolas, Monaco, monospace; }
+:not(pre) > code, code[class] { background-color: #F8F8F8; }
+code.language-undefined, pre > code:not([class]) {
+  background-color: inherit;
+  border: 1px solid #eee;
+}
+table {
+  margin: auto;
+  border-top: 1px solid #666;
+}
+table thead th { border-bottom: 1px solid #ddd; }
+th, td { padding: 5px; }
+thead, tfoot, tr:nth-child(even) { background: #eee; }
+blockquote {
+  color: #666;
+  margin: 0;
+  padding-left: 1em;
+  border-left: 0.5em solid #eee;
+}
+hr, .footnotes::before { border: 1px dashed #ddd; }
+.frontmatter { text-align: center; }
+#TOC .numbered li { list-style: none; }
+#TOC .numbered { padding-left: 0; }
+#TOC .numbered ul { padding-left: 1em; }
+table, .body h2 { border-bottom: 1px solid #666; }
+.body .appendix, .appendix ~ h2 { border-bottom-style: dashed; }
+.footnote-ref a::before { content: "["; }
+.footnote-ref a::after { content: "]"; }
+section.footnotes::before {
+  content: "";
+  display: block;
+  max-width: 20em;
+}
+
+@media print {
+  body {
+    font-size: 12pt;
+    max-width: 100%;
+  }
+  tr, img { page-break-inside: avoid; }
+}
+@media only screen and (min-width: 992px) {
+  pre { white-space: pre; }
+}
+</style>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.css">
+</head>
+<body>
+<div class="frontmatter">
+<div class="title"><h1>Basic topics for the qgcomp package: g-computation on exposure quantiles</h1></div>
+<div class="author"><h2>Alexander Keil</h2></div>
+<div class="date"><h3>2025-01-22</h3></div>
+</div>
+<div class="body">
+<h2 id="introduction">Introduction</h2>
+<p><code>qgcomp</code> is a package to implement g-computation for analyzing the effects of exposure
+mixtures. Quantile g-computation yields estimates of the effect of increasing
+all exposures by one quantile, simultaneously. This, it estimates a “mixture
+effect” useful in the study of exposure mixtures such as air pollution, diet,
+and water contamination.</p>
+<p>Using terminology from methods developed for causal effect estimation, quantile
+g-computation estimates the parameters of a marginal structural model that
+characterizes the change in the expected potential outcome given a joint intervention
+on all exposures, possibly conditional on confounders. Under the assumptions of
+exchangeability, causal consistency, positivity, no interference, and correct
+model specification, this model yields a causal effect for an intervention
+on the mixture as a whole. While these assumptions may not be met exactly, they
+provide a useful road map for how to interpret the results of a qgcomp fit, and
+where efforts should be spent in terms of ensuring accurate model specification
+and selection of exposures that are sufficient to control co-pollutant confounding.</p>
+<h3 id="the-model">The model</h3>
+<p>Say we have an outcome \(Y\), some exposures \(\mathbb{X}\) and possibly some other covariates (e.g. potential confounders) denoted by \(\mathbb{Z}\).</p>
+<p>The basic model of quantile g-computation is a joint marginal structural model given by</p>
+<p>[
+\mathbb{E}(Y^{\mathbf{X}_q} | \mathbf{Z,\psi,\eta}) = g(\psi_0 + \psi_1 S_q +  \mathbf{\eta Z})
+]</p>
+<p>where \(g(\cdot)\) is a link function in a generalized linear model (e.g. the inverse logit function in the case of a logistic model for the probability that \(Y=1\)), \(\psi_0\) is the model intercept, \(\mathbf{\eta}\) is a set of model coefficients for the covariates and \(S_q\) is an “index” that represents a joint value of exposures. Quantile g-computation (by default) transforms all exposures \(\mathbf{X}\) into \(\mathbf{X}_q\), which are “scores” taking on discrete values 0,1,2,etc. representing a categorical “bin” of exposure. By default, there are four bins with evenly spaced quantile cutpoints for each exposure, so \({X}_q=0\) means that \(X\) was below the observed 25th percentile for that exposure. The index \(S_q\) represents all exposures being set to the same value (again, by default, discrete values 0,1,2,3). Thus, <em>the parameter \(\psi_1\) quantifies the expected change in the outcome, given a one quantile increase in all exposures simultaneously,</em> possibly adjusted for \(\mathbf{Z}\).</p>
+<p>There are nuances to this particular model form that are available in the <code>qgcomp</code> package which will be explored below. There exists one special case of quantile g-computation that leads to fast fitting: linear/additive exposure effects. Here we simulate “pre-quantized” data where the exposures \(X_1, X_2, X_3\) can only take on values of 0,1,2,3 in equal proportions. The model underlying the outcomes is given by the linear regression:</p>
+<p>[
+\mathbb{E}(Y | \mathbf{X,\beta}) = \beta_0 + \beta_1 X_1 + \beta_2 X_2  + \beta_3 X_3
+]</p>
+<p>with the true values of \(\beta_0=0, \beta_1 =0.25, \beta_2 =-0.1, \beta_3=0.05\), and \(X_1\) is strongly positively correlated with \(X_2\) ($\rho=0.95$) and negatively correlated with \(X_3\) ($\rho=-0.3$). In this simple setting, the parameter \(\psi_1\) will equal the sum of the \(\beta\) coefficients (0.2). Here we see that qgcomp estimates a value very close to 0.2 (as we increase sample size, the estimated value will be expected to become increasingly close to 0.2).</p>
+<pre><code class="language-r">library(&quot;qgcomp&quot;)
+set.seed(543210)
+qdat = simdata_quantized(n=5000, outcomtype=&quot;continuous&quot;, cor=c(.95, -0.3), b0=0, coef=c(0.25, -0.1, 0.05), q=4)
+head(qdat)
+</code></pre>
+<pre><code>##   x1 x2 x3          y
+## 1  2  2  3  0.5539253
+## 2  2  3  1 -0.1005701
+## 3  2  2  3  0.3782267
+## 4  1  2  2 -0.4557419
+## 5  0  0  1  0.6124436
+## 6  1  1  2  0.7569574
+</code></pre>
+<pre><code class="language-r">cor(qdat[,c(&quot;x1&quot;, &quot;x2&quot;, &quot;x3&quot;)])
+</code></pre>
+<pre><code>##          x1       x2       x3
+## x1  1.00000  0.95552 -0.30368
+## x2  0.95552  1.00000 -0.29840
+## x3 -0.30368 -0.29840  1.00000
+</code></pre>
+<pre><code class="language-r">qgcomp(y~x1+x2+x3, expnms=c(&quot;x1&quot;, &quot;x2&quot;, &quot;x3&quot;), data=qdat)
+</code></pre>
+<pre><code>## Scaled effect size (positive direction, sum of positive coefficients = 0.3)
+##    x1    x3 
+## 0.775 0.225 
+## 
+## Scaled effect size (negative direction, sum of negative coefficients = -0.0966)
+## x2 
+##  1 
+## 
+## Mixture slope parameters (delta method CI):
+## 
+##               Estimate Std. Error Lower CI Upper CI t value Pr(&gt;|t|)
+## (Intercept) -0.0016583  0.0359609 -0.07214 0.068824 -0.0461   0.9632
+## psi1         0.2035810  0.0219677  0.16053 0.246637  9.2673   &lt;2e-16
+</code></pre>
+<h2 id="how-to-use-the-qgcomp-package">How to use the <code>qgcomp</code> package</h2>
+<p>Here we use a running example from the <code>metals</code> dataset from the from the package
+<code>qgcomp</code> to demonstrate some features of the package and method.</p>
+<p>Namely, the examples below demonstrate use of the package for:</p>
+<ol>
+<li>Fast estimation of exposure effects under a linear model for quantized exposures for continuous (normal) outcomes</li>
+<li>Estimating conditional and marginal odds/risk ratios of a mixture effect for binary outcomes</li>
+<li>Adjusting for non-exposure covariates when estimating effects of the mixture</li>
+<li>Allowing non-linear and non-homogeneous effects of individual exposures and the mixture as a whole by including product terms</li>
+<li>Using qgcomp to fit a time-to-event model to estimate conditional and marginal hazard ratios for the exposure mixture</li>
+</ol>
+<p>For analogous approaches to estimating exposure mixture effects, illustrative examples can be seen in the <code>gQWS</code> package help files, which implements
+weighted quantile sum (WQS) regression, and at <a href="https://jenfb.github.io/bkmr/overview.html">https://jenfb.github.io/bkmr/overview.html</a>, which describes Bayesian kernel machine regression.</p>
+<p>The <code>metals</code> dataset from the from the package <code>qgcomp</code>, comprises a set of simulated well water exposures and two health outcomes (one continuous, one binary/time-to-event). The exposures are transformed to have mean = 0.0, standard deviation = 1.0. The data are used throughout to demonstrate usage and features of the <code>qgcomp</code> package.</p>
+<pre><code class="language-r">library(&quot;ggplot2&quot;)
+data(&quot;metals&quot;, package=&quot;qgcomp&quot;)
+head(metals)
+</code></pre>
+<pre><code>##       arsenic      barium    cadmium    calcium    chloride    chromium
+## 1  0.09100165  0.08166362 15.0738845 -0.7746662 -0.15408335 -0.05589104
+## 2  0.17018302 -0.03598828 -0.7126486 -0.6857886 -0.19605499 -0.03268488
+## 3  0.13336869  0.09934014  0.6441992 -0.1525231 -0.17511844 -0.01161098
+## 4 -0.52570747 -0.76616263 -0.8610256  1.4472733  0.02552401 -0.05173287
+## 5  0.43420529  0.40629920  0.0570890  0.4103682 -0.24187403 -0.08931824
+## 6  0.71832662  0.19559582 -0.6823437 -0.8931696 -0.03919936 -0.07389407
+##        copper       iron         lead  magnesium   manganese     mercury
+## 1  1.99438050 19.1153352 21.072630908 -0.5109546  2.07630966 -1.20826726
+## 2 -0.02490169 -0.2039425 -0.010378362 -0.1030542 -0.36095395 -0.68729723
+## 3  0.25700811 -0.1964581 -0.063375935  0.9166969 -0.31075240  0.44852503
+## 4  0.75477075 -0.2317787 -0.002847991  2.5482987 -0.23350205  0.20428158
+## 5 -0.09919923 -0.1698619 -0.035276281 -0.5109546  0.08825996  1.19283834
+## 6 -0.05622285 -0.2129300 -0.118460981 -1.0059145 -0.30219838  0.02875033
+##      nitrate    nitrite         ph    selenium     silver      sodium
+## 1  1.3649492 -1.0500539 -0.7125482  0.23467592 -0.8648653 -0.41840695
+## 2 -0.1478382  0.4645119  0.9443009  0.65827253 -0.8019173 -0.09112969
+## 3 -0.3001660 -1.4969868  0.4924330  0.07205576 -0.3600140 -0.11828963
+## 4  0.3431814 -0.6992263 -0.4113029  0.23810705  1.3595205 -0.11828963
+## 5  0.0431269 -0.5041390  0.3418103 -0.02359910 -1.6078044 -0.40075299
+## 6 -0.3986575  0.1166249  1.2455462 -0.61186017  1.3769466  1.83722597
+##      sulfate total_alkalinity total_hardness       zinc mage35          y
+## 1 -0.1757544      -1.31353389    -0.85822417  1.0186058      1 -0.6007989
+## 2 -0.1161359      -0.12699789    -0.67749970 -0.1509129      0 -0.2022296
+## 3 -0.1616806       0.42671890     0.07928399 -0.1542524      0 -1.2164116
+## 4  0.8272415       0.99173604     1.99948142  0.1843372      0  0.1826311
+## 5 -0.1726845      -0.04789549     0.30518957 -0.1529379      0  1.1760472
+## 6 -0.1385631       1.98616621    -1.07283447 -0.1290391      0 -0.4100912
+##   disease_time disease_state
+## 1 6.168764e-07             1
+## 2 4.000000e+00             0
+## 3 4.000000e+00             0
+## 4 4.000000e+00             0
+## 5 1.813458e+00             1
+## 6 2.373849e+00             1
+</code></pre>
+<h3 id="example-1-linear-model">Example 1: linear model</h3>
+<pre><code class="language-r"># we save the names of the mixture variables in the variable &quot;Xnm&quot;
+Xnm &lt;- c(
+    'arsenic','barium','cadmium','calcium','chromium','copper',
+    'iron','lead','magnesium','manganese','mercury','selenium','silver',
+    'sodium','zinc'
+)
+covars = c('nitrate','nitrite','sulfate','ph', 'total_alkalinity','total_hardness')
+
+
+
+# Example 1: linear model
+# Run the model and save the results &quot;qc.fit&quot;
+system.time(qc.fit &lt;- qgcomp.glm.noboot(y~.,dat=metals[,c(Xnm, 'y')], family=gaussian()))
+</code></pre>
+<pre><code>## Including all model terms as exposures of interest
+</code></pre>
+<pre><code>##    user  system elapsed 
+##   0.004   0.000   0.004
+</code></pre>
+<pre><code class="language-r">#   user  system elapsed 
+#  0.011   0.002   0.018 
+
+# contrasting other methods with computational speed
+# WQS regression (v3.0.1 of gWQS package)
+#system.time(wqs.fit &lt;- gWQS::gwqs(y~wqs,mix_name=Xnm, data=metals[,c(Xnm, 'y')], family=&quot;gaussian&quot;))
+#   user  system elapsed 
+# 35.775   0.124  36.114 
+
+# Bayesian kernel machine regression (note that the number of iterations here would 
+#  need to be &gt;5,000, at minimum, so this underestimates the run time by a factor
+#  of 50+
+#system.time(bkmr.fit &lt;- kmbayes(y=metals$y, Z=metals[,Xnm], family=&quot;gaussian&quot;, iter=100))
+#   user  system elapsed 
+# 81.644   4.194  86.520 
+</code></pre>
+<p>First note that qgcomp can be very fast relative to competing methods (with their example times given from single runs from a laptop).</p>
+<p>One advantage of quantile g-computation over other methods that estimate
+“mixture effects” (the effect of changing all exposures at once), is that it
+is very computationally efficient. Contrasting methods such as WQS (<code>gWQS</code>
+package) and Bayesian Kernel Machine regression (<code>bkmr</code> package),
+quantile g-computation can provide results many orders of magnitude faster.
+For example, the example above ran 3000X faster for quantile g-computation
+versus WQS regression, and we estimate the speedup would be several
+hundred thousand times versus Bayesian kernel machine regression.</p>
+<p>The speed relies on an efficient method to fit qgcomp when exposures are added additively to the model. When exposures are added using non-linear terms or non-additive terms (see below for examples), then qgcomp will be slower but often still faster than competetive approaches.</p>
+<p>Quantile g-computation yields fixed weights in the estimation procedure, similar
+to WQS regression. However, note that the weights from <code>qgcomp.glm.noboot</code>
+can be negative or positive. When all effects are linear and in the same
+direction (“directional homogeneity”), quantile g-computation is equivalent to
+weighted quantile sum regression in large samples.</p>
+<p>The overall mixture effect from quantile g-computation (psi1) is interpreted as
+the effect on the outcome of increasing every exposure by one quantile, possibly
+conditional on covariates. Given the overall exposure effect, the weights are
+considered fixed and so do not have confidence intervals or p-values.</p>
+<pre><code class="language-r"># View results: scaled coefficients/weights and statistical inference about
+# mixture effect
+qc.fit
+</code></pre>
+<pre><code>## Scaled effect size (positive direction, sum of positive coefficients = 0.39)
+##  calcium     iron   barium   silver  arsenic  mercury   sodium chromium 
+##  0.72216  0.06187  0.05947  0.03508  0.03447  0.02451  0.02162  0.02057 
+##  cadmium     zinc 
+##  0.01328  0.00696 
+## 
+## Scaled effect size (negative direction, sum of negative coefficients = -0.124)
+## magnesium    copper      lead manganese  selenium 
+##  0.475999  0.385299  0.074019  0.063828  0.000857 
+## 
+## Mixture slope parameters (delta method CI):
+## 
+##              Estimate Std. Error Lower CI Upper CI t value  Pr(&gt;|t|)
+## (Intercept) -0.356670   0.107878 -0.56811 -0.14523 -3.3062 0.0010238
+## psi1         0.266394   0.071025  0.12719  0.40560  3.7507 0.0002001
+</code></pre>
+<p>Now let’s take a brief look under the hood. <code>qgcomp</code> works in steps. First, the exposure variables are “quantized” or turned into score variables based on the total number of quantiles from the parameter <code>q</code>. You can access these via the <code>qx</code> object from the <code>qgcomp</code> fit object.</p>
+<pre><code class="language-r"># quantized data
+head(qc.fit$qx)
+</code></pre>
+<pre><code>##   arsenic_q barium_q cadmium_q calcium_q chromium_q copper_q iron_q lead_q
+## 1         2        2         3         0          1        3      3      3
+## 2         2        2         0         0          2        2      1      2
+## 3         2        2         3         1          3        3      1      1
+## 4         1        0         0         3          1        3      0      2
+## 5         2        3         2         3          0        1      2      2
+## 6         3        2         0         0          0        2      1      1
+##   magnesium_q manganese_q mercury_q selenium_q silver_q sodium_q zinc_q
+## 1           1           3         0          2        0        0      3
+## 2           2           0         1          3        1        3      0
+## 3           3           1         2          2        1        3      0
+## 4           3           1         2          2        3        3      3
+## 5           1           3         3          1        0        0      0
+## 6           0           1         2          0        3        3      2
+</code></pre>
+<p>You can re-fit a linear model using these quantized exposures. This is the “underlying model” of a qgcomp fit.</p>
+<pre><code class="language-r"># regression with quantized data
+qc.fit$qx$y = qc.fit$fit$data$y # first bring outcome back into the quantized data
+newfit &lt;- lm(y ~ arsenic_q + barium_q + cadmium_q + calcium_q + chromium_q + copper_q + 
+    iron_q + lead_q + magnesium_q + manganese_q + mercury_q + selenium_q + 
+    silver_q + sodium_q + zinc_q, data=qc.fit$qx)
+newfit
+</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = y ~ arsenic_q + barium_q + cadmium_q + calcium_q + 
+##     chromium_q + copper_q + iron_q + lead_q + magnesium_q + manganese_q + 
+##     mercury_q + selenium_q + silver_q + sodium_q + zinc_q, data = qc.fit$qx)
+## 
+## Coefficients:
+## (Intercept)    arsenic_q     barium_q    cadmium_q    calcium_q   chromium_q  
+##  -0.3566699    0.0134440    0.0231929    0.0051773    0.2816176    0.0080231  
+##    copper_q       iron_q       lead_q  magnesium_q  manganese_q    mercury_q  
+##  -0.0476113    0.0241278   -0.0091464   -0.0588190   -0.0078872    0.0095572  
+##  selenium_q     silver_q     sodium_q       zinc_q  
+##  -0.0001059    0.0136815    0.0084302    0.0027125
+</code></pre>
+<p>Here you can see that, <em>for a GLM in which all quantized exposures enter linearly and additively into the underlying model</em> the overall effect from <code>qgcomp</code> is simply the sum of the adjusted coefficients from the underlying model.</p>
+<pre><code class="language-r">sum(newfit$coefficients[-1]) # sum of all coefficients excluding intercept and confounders, if any
+</code></pre>
+<pre><code>## [1] 0.2663942
+</code></pre>
+<pre><code class="language-r">coef(qc.fit) # overall effect and intercept from qgcomp fit
+</code></pre>
+<pre><code>## (intercept)        psi1 
+##  -0.3566699   0.2663942
+</code></pre>
+<p>This equality is why we can fit qgcomp so efficiently under such a model, but <code>qgcomp</code> is a much more general method that can allow for non-linearity and non-additivity in the underlying model, as well as non-linearity in the overall model. These extensions are described in some of the following examples.</p>
+<h3 id="example-2-conditional-odds-ratio-marginal-odds-ratio-in-a-logistic-model">Example 2: conditional odds ratio, marginal odds ratio in a logistic model</h3>
+<p>This example introduces the use of a binary outcome in <code>qgcomp</code> via the
+<code>qgcomp.glm.noboot</code> function, which yields a conditional odds ratio or the
+<code>qgcomp.glm.boot</code>, which yields a marginal odds ratio or risk/prevalence ratio. These
+will not equal each other when there are non-exposure covariates (e.g.
+confounders) included in the model because the odds ratio is not collapsible (both
+are still valid). Marginal parameters will yield estimates of the population
+average exposure effect, which is often of more interest due to better
+interpretability over conditional odds ratios. Further, odds ratios are not
+generally of interest when risk ratios can be validly estimated, so <code>qgcomp.glm.boot</code>
+will estimate the risk ratio by default for binary data (set rr=FALSE to
+allow estimation of ORs when using <code>qgcomp.glm.boot</code>).</p>
+<pre><code class="language-r">qc.fit2 &lt;- qgcomp.glm.noboot(disease_state~., expnms=Xnm, 
+          data = metals[,c(Xnm, 'disease_state')], family=binomial(), 
+          q=4)
+qcboot.fit2 &lt;- qgcomp.glm.boot(disease_state~., expnms=Xnm, 
+          data = metals[,c(Xnm, 'disease_state')], family=binomial(), 
+          q=4, B=10,# B should be 200-500+ in practice
+          seed=125, rr=FALSE)
+qcboot.fit2b &lt;- qgcomp.glm.boot(disease_state~., expnms=Xnm, 
+          data = metals[,c(Xnm, 'disease_state')], family=binomial(), 
+          q=4, B=10,# B should be 200-500+ in practice
+          seed=125, rr=TRUE)
+</code></pre>
+<p>Compare a qgcomp.glm.noboot fit:</p>
+<pre><code class="language-r">qc.fit2
+</code></pre>
+<pre><code>## Scaled effect size (positive direction, sum of positive coefficients = 0.392)
+##    barium      zinc  chromium magnesium    silver    sodium 
+##    0.3520    0.2002    0.1603    0.1292    0.0937    0.0645 
+## 
+## Scaled effect size (negative direction, sum of negative coefficients = -0.696)
+##  selenium    copper   arsenic   calcium manganese   cadmium   mercury      lead 
+##    0.2969    0.1627    0.1272    0.1233    0.1033    0.0643    0.0485    0.0430 
+##      iron 
+##    0.0309 
+## 
+## Mixture log(OR) (delta method CI):
+## 
+##             Estimate Std. Error Lower CI Upper CI Z value Pr(&gt;|z|)
+## (Intercept)  0.26362    0.51615 -0.74802  1.27526  0.5107   0.6095
+## psi1        -0.30416    0.34018 -0.97090  0.36258 -0.8941   0.3713
+</code></pre>
+<p>with a qgcomp.glm.boot fit:</p>
+<pre><code class="language-r">qcboot.fit2
+</code></pre>
+<pre><code>## Mixture log(OR) (bootstrap CI):
+## 
+##             Estimate Std. Error Lower CI Upper CI Z value Pr(&gt;|z|)
+## (Intercept)  0.26362    0.39038 -0.50151  1.02875  0.6753   0.4995
+## psi1        -0.30416    0.28009 -0.85314  0.24481 -1.0859   0.2775
+</code></pre>
+<p>with a qgcomp.glm.boot fit, where the risk/prevalence ratio is estimated,  rather than the odds ratio:</p>
+<pre><code class="language-r">qcboot.fit2b
+</code></pre>
+<pre><code>## Mixture log(RR) (bootstrap CI):
+## 
+##             Estimate Std. Error Lower CI Upper CI Z value Pr(&gt;|z|)
+## (Intercept) -0.56237    0.16106 -0.87804 -0.24670 -3.4917  0.00048
+## psi1        -0.16373    0.13839 -0.43497  0.10752 -1.1830  0.23679
+</code></pre>
+<h3 id="example-3-adjusting-for-covariates-plotting-estimates">Example 3: adjusting for covariates, plotting estimates</h3>
+<p>In the following code we run a maternal age-adjusted linear model with
+<code>qgcomp</code> (<code>family = &quot;gaussian&quot;</code>). Further, we plot both the weights, as well as the mixture slope
+which yields overall model confidence bounds, representing the bounds that, for each value of the
+joint exposure are expected to contain the true regression line over 95% of trials (so-called 95% ‘pointwise’ bounds for the regression line). The pointwise comparison bounds, denoted by error bars on the plot, represent comparisons of the expected difference in outcomes at each quantile, with reference
+to a specific quantile (which can be specified by the user, as below). These pointwise bounds are similar to the bounds
+created in the bkmr package when plotting the overall effect of all exposures. The pointwise bounds can be obtained via the pointwisebound.boot function. To avoid confusion between “pointwise regression” and “pointwise comparison” bounds, the pointwise regression bounds are denoted as the “model confidence band” in the plots, since they yield estimates of the same type of bounds as the <code>predict</code> function in R when applied to linear model fits.</p>
+<p>Note that the underlying regression model is on the quantile ‘score’, which takes on values integer values
+0, 1, …, q-1. For plotting purposes (when plotting regression line results from qgcomp.glm.boot),
+the quantile score is translated into a quantile (range = [0-1]). This is not a perfect correspondence,
+because the quantile g-computation model treats the  quantile score as a continuous variable, but the quantile category comprises a range of quantiles.
+For visualization, we fix the ends of the plot at the mid-points of the first and last quantile cut-point,
+so the range of the plot will change slightly if ‘q’ is changed.</p>
+<pre><code class="language-r">qc.fit3 &lt;- qgcomp.glm.noboot(y ~ mage35 + arsenic + barium + cadmium + calcium + chloride + 
+                           chromium + copper + iron + lead + magnesium + manganese + 
+                           mercury + selenium + silver + sodium + zinc,
+                         expnms=Xnm,
+                         metals, family=gaussian(), q=4)
+qc.fit3
+</code></pre>
+<pre><code>## Scaled effect size (positive direction, sum of positive coefficients = 0.381)
+##  calcium   barium     iron   silver  arsenic  mercury chromium     zinc 
+##  0.74466  0.06636  0.04839  0.03765  0.02823  0.02705  0.02344  0.01103 
+##   sodium  cadmium 
+##  0.00775  0.00543 
+## 
+## Scaled effect size (negative direction, sum of negative coefficients = -0.124)
+## magnesium    copper      lead manganese  selenium 
+##   0.49578   0.35446   0.08511   0.06094   0.00372 
+## 
+## Mixture slope parameters (delta method CI):
+## 
+##              Estimate Std. Error Lower CI Upper CI t value  Pr(&gt;|t|)
+## (Intercept) -0.348084   0.108037 -0.55983 -0.13634 -3.2219 0.0013688
+## psi1         0.256969   0.071459  0.11691  0.39703  3.5960 0.0003601
+</code></pre>
+<pre><code class="language-r">plot(qc.fit3)
+</code></pre>
+<p>![plot of chunk adj4cov a](figure/adj4cov a-1.png)</p>
+<p>From the first plot we see weights from <code>qgcomp.glm.noboot</code> function, which include both
+positive and negative effect directions. When the weights are all on a single side of the null,
+these plots are easy to in interpret since the weight corresponds to the proportion of the
+overall effect from each exposure. WQS uses a constraint in the model to force
+all of the weights to be in the same direction - unfortunately such constraints
+lead to biased effect estimates. The <code>qgcomp</code> package takes a different approach
+and allows that “weights” might go in either direction, indicating that some exposures
+may beneficial, and some harmful, or there may be sampling variation due to using
+small or moderate sample sizes (or, more often, systematic bias such as unmeasured
+confounding). The “weights” in <code>qgcomp</code> correspond to the proportion of the overall effect
+when all of the exposures have effects in the same direction, but otherwise they
+correspond to the proportion of the effect <em>in a particular direction</em>, which
+may be small (or large) compared to the overall “mixture” effect. NOTE: the left
+and right sides of the  plot should not be compared with each other because the
+length of the bars corresponds to the effect size only relative to other effects
+in the same direction. The darkness of the bars corresponds to the overall effect
+size - in this case the bars on the right (positive) side of the plot are darker
+because the overall “mixture” effect is positive. Thus, the shading allows one
+to make informal comparisons across the left and right sides: a large, darkly
+shaded bar indicates a larger independent effect than a large, lightly shaded bar.</p>
+<pre><code class="language-r">qcboot.fit3 &lt;- qgcomp.glm.boot(y ~ mage35 + arsenic + barium + cadmium + calcium + chloride + 
+                           chromium + copper + iron + lead + magnesium + manganese + 
+                           mercury + selenium + silver + sodium + zinc,
+                         expnms=Xnm,
+                         metals, family=gaussian(), q=4, B=10,# B should be 200-500+ in practice
+                         seed=125)
+qcboot.fit3
+</code></pre>
+<pre><code>## Mixture slope parameters (bootstrap CI):
+## 
+##              Estimate Std. Error Lower CI Upper CI t value  Pr(&gt;|t|)
+## (Intercept) -0.342787   0.114983 -0.56815 -0.11742 -2.9812 0.0030331
+## psi1         0.256969   0.075029  0.10991  0.40402  3.4249 0.0006736
+</code></pre>
+<pre><code class="language-r">qcee.fit3 &lt;- qgcomp.glm.ee(y ~ mage35 + arsenic + barium + cadmium + calcium + chloride + 
+                           chromium + copper + iron + lead + magnesium + manganese + 
+                           mercury + selenium + silver + sodium + zinc,
+                         expnms=Xnm,
+                         metals, family=gaussian(), q=4)
+qcee.fit3
+</code></pre>
+<pre><code>## Mixture slope parameters (robust CI):
+## 
+##             Estimate Std. Error Lower CI Upper CI t value  Pr(&gt;|t|)
+## (Intercept) -0.34279    0.10140 -0.54153 -0.14405 -3.3805 0.0007890
+## psi1         0.25697    0.06771  0.12426  0.38968  3.7952 0.0001686
+</code></pre>
+<p>We can change the referent category for pointwise comparisons via the <code>pointwiseref</code> parameter:</p>
+<pre><code class="language-r">plot(qcee.fit3, pointwiseref = 3, flexfit = FALSE)
+plot(qcboot.fit3, pointwiseref = 3, flexfit = FALSE)
+</code></pre>
+<p>![plot of chunk adj4cov c](figure/adj4cov c-1.png)![plot of chunk adj4cov c](figure/adj4cov c-2.png)</p>
+<p>Using <code>qgcomp.glm.boot</code> also allows us to assess
+linearity of the total exposure effect (the second plot). Similar output is available
+for WQS (<code>gWQS</code> package), though WQS results will generally be less interpretable
+when exposure effects are non-linear (see below how to do this with <code>qgcomp.glm.boot</code> and <code>qgcomp.glm.ee</code>).</p>
+<p>The plot for the <code>qcboot.fit3</code> object (using g-computation with bootstrap variance)
+gives predictions at the joint intervention levels of exposure. It also displays
+a smoothed (graphical) fit.</p>
+<p>Note that the uncertainty intervals given in the plot are directly accessible via the <code>pointwisebound</code> (pointwise comparison confidence intervals) and <code>modelbound</code> functions (confidence interval for the regression line):</p>
+<pre><code class="language-r">pointwisebound.boot(qcboot.fit3, pointwiseref=3)
+</code></pre>
+<pre><code>##   quantile quantile.midpoint     linpred  mean.diff    se.diff    ll.diff
+## 0        0             0.125 -0.34278746 -0.5139387 0.15005846 -0.8080479
+## 1        1             0.375 -0.08581809 -0.2569694 0.07502923 -0.4040240
+## 2        2             0.625  0.17115127  0.0000000 0.00000000  0.0000000
+## 3        3             0.875  0.42812064  0.2569694 0.07502923  0.1099148
+##      ul.diff ll.linpred  ul.linpred
+## 0 -0.2198295 -0.6368966 -0.04867828
+## 1 -0.1099148 -0.2328727  0.06123650
+## 2  0.0000000  0.1711513  0.17115127
+## 3  0.4040240  0.2810660  0.57517523
+</code></pre>
+<pre><code class="language-r">qgcomp:::modelbound.boot(qcboot.fit3)
+</code></pre>
+<pre><code>##   quantile quantile.midpoint     linpred           m      se.pw       ll.pw
+## 0        0             0.125 -0.34278746 -0.34278746 0.11498301 -0.56815001
+## 1        1             0.375 -0.08581809 -0.08581809 0.04251388 -0.16914376
+## 2        2             0.625  0.17115127  0.17115127 0.04065143  0.09147593
+## 3        3             0.875  0.42812064  0.42812064 0.11294432  0.20675384
+##          ul.pw   ll.simul     ul.simul
+## 0 -0.117424905 -0.4622572 -0.161947578
+## 1 -0.002492425 -0.1191843 -0.005233921
+## 2  0.250826606  0.1386622  0.223888629
+## 3  0.649487428  0.3081934  0.566961520
+</code></pre>
+<p>Because qgcomp estimates a joint effect of multiple exposures, we cannot, in general, assess model fit by overlaying predictions from the plots above with the data. Hence, it is useful to explore non-linearity by fitting models that
+allow for non-linear effects, as in the next example.</p>
+<h3 id="example-4-non-linearity-and-non-homogeneity">Example 4: non-linearity (and non-homogeneity)</h3>
+<p><code>qgcomp</code> (specifically <code>qgcomp.*.boot</code> and <code>qgcomp.*.ee</code> methods) addresses non-linearity in a way similar to standard parametric regression models, which lends itself to being able to leverage R language features for n-lin parametric models (or, more precisely, parametric models that deviate from a purely additive, linear function on the link function basis via the use of basis function representation of non-linear functions).
+Here is an example where we use a feature of the R language for fitting models
+with interaction terms. We use <code>y~. + .^2</code> as the model formula, which fits a model
+that allows for quadratic term for every predictor in the model.</p>
+<h4 id="aside-some-details-on-qgcomp-methods-for-non-linearity">Aside: some details on qgcomp methods for non-linearity</h4>
+<p>Note that both <code>qgcomp.*.boot</code> (bootstrap) and <code>qgcomp.*.ee</code> (estimating equations) use standard methods for g-computation, whereas the <code>qgcomp.*.noboot</code> methods use a fast algorithm that works under the assumption of linearity and additivity of exposures (as described in the original paper on quantile-based g-computation). The “standard” method of g-computation with time-fixed exposures involves first fitting conditional models for the outcome, making predictions from those models under set exposure values, and then summarizing the predicted outcome distribution, possibly by fitting a second (marginal structural) model. <code>qgcomp.*.boot</code> follows this three-step process, while <code>qgcomp.*.ee</code> leverages estimating equations (sometimes: M-estimation) to estimate the parameters of the conditional and marginal structural model simultaneously. <code>qgcomp.*.ee</code> uses a sandwich variance estimator, which is similar to GEE (generalized estimating equation) approaches, and thus, when used correctly, can yield inference for longitudinal data in the same way that GEE does. The bootstrapping approach can also do this, but it takes longer. The extension to longitudinal data is representative of the broader concept that <code>qgcomp.*.boot</code> and <code>qgcomp.*.ee</code> can be used in a broader number of settings than <code>qgcomp.*.noboot</code> algorithms, but if one assumes linearity and additivity with no clustering of observations, and conditional parameters are of interest, then they are just a slower way to get equivalent results to <code>qgcomp.*.noboot</code>.</p>
+<p>Below, we demonstrate a non-linear conditional fit (with a linear MSM) using the bootstrap approach. Similar approaches could be used to include interaction terms between exposures, as well as between exposures and covariates. Note this example is purposefully done incorrectly, as explained below.</p>
+<pre><code class="language-r">qcboot.fit4 &lt;- qgcomp(y~. + .^2,
+                         expnms=Xnm,
+                         metals[,c(Xnm, 'y')], family=gaussian(), q=4, B=10, seed=125)
+plot(qcboot.fit4)
+</code></pre>
+<p>![plot of chunk n-lin non-hom intro](figure/n-lin non-hom intro-1.png)</p>
+<p>Note that allowing for a non-linear effect of all exposures induces an apparent
+non-linear trend in the overall exposure effect. The smoothed regression line is
+still well within the confidence bands of the marginal linear model
+(by default, the overall effect of joint exposure is assumed linear,
+though this assumption can be relaxed via the ‘degree’ parameter in qgcomp.glm.boot or qgcomp.glm.ee,
+as follows:</p>
+<pre><code class="language-r">qcboot.fit5 &lt;- qgcomp(y~. + .^2,
+                         expnms=Xnm,
+                         metals[,c(Xnm, 'y')], family=gaussian(), q=4, degree=2, 
+                      B=10, rr=FALSE, seed=125)
+plot(qcboot.fit5)
+qcee.fit5b &lt;- qgcomp.glm.ee(y~. + .^2,
+                         expnms=Xnm,
+                         metals[,c(Xnm, 'y')], family=gaussian(), q=4, degree=2, 
+                         rr=FALSE)
+plot(qcee.fit5b)
+</code></pre>
+<p>![plot of chunk ovrl n-lin](figure/ovrl n-lin-1.png)![plot of chunk ovrl n-lin](figure/ovrl n-lin-2.png)</p>
+<p>Note that some features are not availble to qgcomp.*.ee methods, which use estimating equations, rather than maximum likelihood methods. Briefly, these allow assessment of uncertainty under n-lin (and other) scenarios where the qgcomp.*.noboot functions cannot, since they rely on the additivity and linearity assumptions to achieve speed. The qgcomp.*.ee methods will generally be faster than a bootstrapped version, but they are not used extensively here because they are the newest additions to the qgcomp package, and the bootstrapped versions can be made fast (but not accurate) by reducing the number of bootstraps. Where available, the qgcomp.*.ee will be preferred to the qgcomp.*.boot versions for more stable and faster analyses when bootstrapping would otherwise be necessary.</p>
+<p>Once again, we can access numerical estimates of uncertainty (answers differ between the <code>qgcomp.*.boot</code> and <code>qgcomp.*.ee</code> fits due to the small number of bootstrap samples):</p>
+<pre><code class="language-r">modelbound.boot(qcboot.fit5)
+</code></pre>
+<pre><code>##   quantile quantile.midpoint     linpred           m      se.pw      ll.pw
+## 0        0             0.125 -0.89239044 -0.89239044 0.70335801 -2.2709468
+## 1        1             0.375 -0.18559680 -0.18559680 0.09874085 -0.3791253
+## 2        2             0.625  0.12180659  0.12180659 0.14624914 -0.1648365
+## 3        3             0.875  0.02981974  0.02981974 0.83609757 -1.6089014
+##         ul.pw    ll.simul    ul.simul
+## 0 0.486165922 -2.08813110  0.18308760
+## 1 0.007931712 -0.32577422 -0.02886665
+## 2 0.408449640 -0.06371183  0.43431431
+## 3 1.668540859 -1.19007238  1.57263047
+</code></pre>
+<pre><code class="language-r">pointwisebound.boot(qcboot.fit5)
+</code></pre>
+<pre><code>##   quantile quantile.midpoint     linpred mean.diff   se.diff    ll.diff
+## 0        0             0.125 -0.89239044 0.0000000 0.0000000  0.0000000
+## 1        1             0.375 -0.18559680 0.7067936 0.6165306 -0.5015841
+## 2        2             0.625  0.12180659 1.0141970 0.6044460 -0.1704954
+## 3        3             0.875  0.02981974 0.9222102 0.3537861  0.2288022
+##    ul.diff ll.linpred ul.linpred
+## 0 0.000000 -0.8923904 -0.8923904
+## 1 1.915171 -1.3939746  1.0227810
+## 2 2.198889 -1.0628859  1.3064991
+## 3 1.615618 -0.6635882  0.7232277
+</code></pre>
+<pre><code class="language-r">pointwisebound.noboot(qcee.fit5b)
+</code></pre>
+<pre><code>##   quantile quantile.midpoint     linpred mean.diff   se.diff    ll.diff
+## 1        0             0.125 -0.89239044 0.0000000 0.0000000  0.0000000
+## 2        1             0.375 -0.18559680 0.7067936 0.4922129 -0.2579259
+## 3        2             0.625  0.12180659 1.0141970 0.9844258 -0.9152420
+## 4        3             0.875  0.02981974 0.9222102 1.4766386 -1.9719484
+##    ul.diff ll.linpred ul.linpred
+## 1 0.000000 -0.8923904 -0.8923904
+## 2 1.671513 -1.1503163  0.7791227
+## 3 2.943636 -1.8076325  2.0512456
+## 4 3.816369 -2.8643388  2.9239783
+</code></pre>
+<p>Ideally, the smooth fit will look very similar to the model prediction regression
+line.</p>
+<h4 id="interpretation-of-model-parameters">Interpretation of model parameters</h4>
+<p>As the output below shows, setting “degree=2” yields a second parameter in the model fit ($\psi_2$). The output of qgcomp now corresponds to estimates of the marginal structural model given by
+[
+\mathbb{E}(Y^{\mathbf{X}_q}) = g(\psi_0 + \psi_1 S_q + \psi_2 S_q^2)
+]</p>
+<pre><code class="language-r">qcboot.fit5
+</code></pre>
+<pre><code>## Mixture slope parameters (bootstrap CI):
+## 
+##             Estimate Std. Error Lower CI Upper CI t value Pr(&gt;|t|)
+## (Intercept) -0.89239    0.70336 -2.27095  0.48617 -1.2688   0.2055
+## psi1         0.90649    0.93820 -0.93235  2.74533  0.9662   0.3347
+## psi2        -0.19970    0.32507 -0.83682  0.43743 -0.6143   0.5395
+</code></pre>
+<p>so that \(\psi_2\) can be interpreted similar to quadratic terms that might appear in a generalized linear model. \(\psi_2\) estimates the change in the outcome for an additional unit of squared joint exposure, over-and-above the linear effect given by \(\psi_1\). Informally, this is a way of formally assessing specific types of non-linearity in the joint exposure-response curves, and there are many other (slightly incorrect but intuitively useful) ways of interpreting parameters for squared terms in regressions (beyond the scope of this document). Intuition from generalized linear models applies directly to the models fit by quantile g-computation.</p>
+<h3 id="example-5-comparing-model-fits-and-further-exploring-non-linearity">Example 5: comparing model fits and further exploring non-linearity</h3>
+<p>Exploring a non-linear fit in settings with multiple exposures is challenging. One way to explore non-linearity, as demonstrated above, is to to include all 2-way interaction terms (including quadratic terms, or “self-interactions”). Sometimes this approach is not desired, either because the number of terms in the model can become very large, or because some sort of model selection procedure is required, which risks inducing over-fit (biased estimates and standard errors that are too small). Short of having a set of a priori non-linear terms to include, we find it best to take a default approach (e.g. taking all second order terms) that doesn’t rely on statistical significance, or to simply be honest that the search for a non-linear model is exploratory and shouldn’t be relied upon for robust inference. Methods such as kernel machine regression may be good alternatives, or supplementary approaches to exploring non-linearity.</p>
+<p>NOTE: qgcomp necessarily fits a regression model with exposures that have a small number of possible values, based on the quantile chosen. By package default, this is <code>q=4</code>, but it is difficult to fully examine non-linear fits using only four points, so we recommend exploring larger values of <code>q</code>, which will change effect estimates (i.e. the model coefficient implies a smaller change in exposures, so the expected change in the outcome will also decrease).</p>
+<p>Here, we examine a one strategy for default and exploratory approaches to mixtures that can be implemented in qgcomp using a smaller subset of exposures (iron, lead, cadmium), which we choose via the correlation matrix. High correlations between exposures may result from a common source, so small subsets of the mixture may be useful for examining hypotheses that relate to interventions on a common environmental source or set of behaviors. Note that we can still adjust for the measured exposures, even though only 3 our exposures of interest are considered as the mixture of interest. Note that we will require a new R package to help in exploring non-linearity: <code>splines</code>. Note that <code>qgcomp.glm.boot</code> must be used in order to produce the graphics below, as <code>qgcomp.glm.noboot</code> does not calculate the necessary quantities.</p>
+<h4 id="graphical-approach-to-explore-non-linearity-in-a-correlated-subset-of-exposures-using-splines">Graphical approach to explore non-linearity in a correlated subset of exposures using splines</h4>
+<pre><code class="language-r">library(splines)
+# find all correlations &gt; 0.6 (this is an arbitrary choice)
+cormat = cor(metals[,Xnm])
+idx = which(cormat&gt;0.6 &amp; cormat &lt;1.0, arr.ind = TRUE)
+newXnm = unique(rownames(idx)) # iron, lead, and cadmium
+
+
+qc.fit6lin &lt;- qgcomp.glm.boot(y ~ iron + lead + cadmium + 
+                         mage35 + arsenic + magnesium + manganese + mercury + 
+                         selenium + silver + sodium + zinc,
+                         expnms=newXnm,
+                         metals, family=gaussian(), q=8, B=10)
+
+qc.fit6nonlin &lt;- qgcomp.glm.boot(y ~ bs(iron) + bs(cadmium) + bs(lead) +
+                         mage35 + arsenic + magnesium + manganese + mercury + 
+                         selenium + silver + sodium + zinc,
+                         expnms=newXnm,
+                         metals, family=gaussian(), q=8, B=10, degree=2)
+
+qc.fit6nonhom &lt;- qgcomp.glm.boot(y ~ bs(iron)*bs(lead) + bs(iron)*bs(cadmium) + bs(lead)*bs(cadmium) +
+                         mage35 + arsenic + magnesium + manganese + mercury + 
+                         selenium + silver + sodium + zinc,
+                         expnms=newXnm,
+                         metals, family=gaussian(), q=8, B=10, degree=3)
+</code></pre>
+<p>It helps to place the plots on a common y-axis, which is easy due to dependence of the qgcomp plotting functions on ggplot. Here’s the linear fit :</p>
+<pre><code class="language-r">pl.fit6lin &lt;- plot(qc.fit6lin, suppressprint = TRUE, pointwiseref = 4)
+pl.fit6lin + coord_cartesian(ylim=c(-0.75, .75)) + 
+  ggtitle(&quot;Linear fit: mixture of iron, lead, and cadmium&quot;)
+</code></pre>
+<p>![plot of chunk graf n-lin 1b](figure/graf n-lin 1b-1.png)</p>
+<p>Here’s the non-linear fit :</p>
+<pre><code class="language-r">pl.fit6nonlin &lt;- plot(qc.fit6nonlin, suppressprint = TRUE, pointwiseref = 4)
+pl.fit6nonlin + coord_cartesian(ylim=c(-0.75, .75)) + 
+  ggtitle(&quot;Non-linear fit: mixture of iron, lead, and cadmium&quot;)
+</code></pre>
+<p>![plot of chunk graf n-lin 2](figure/graf n-lin 2-1.png)</p>
+<p>And here’s the non-linear fit with statistical interaction between exposures (recalling that this will lead to non-linearity in the overall effect):</p>
+<pre><code class="language-r">pl.fit6nonhom &lt;- plot(qc.fit6nonhom, suppressprint = TRUE, pointwiseref = 4)
+pl.fit6nonhom + coord_cartesian(ylim=c(-0.75, .75)) + 
+  ggtitle(&quot;Non-linear, non-homogeneous fit: mixture of iron, lead, and cadmium&quot;)
+</code></pre>
+<p>![plot of chunk graf n-lin 3](figure/graf n-lin 3-1.png)</p>
+<h4 id="caution-about-graphical-approaches">Caution about graphical approaches</h4>
+<p>The underlying conditional model fit can be made extremely flexible, and the graphical representation of this (via the
+smooth conditional fit) can look extremely flexible. Simply matching the overall (MSM) fit to this line is not
+a viable strategy for identifying parsimonious models because that would ignore potential for overfit. Thus,
+caution should be used when judging the accuracy of a fit when comparing the “smooth conditional fit” to the
+“MSM fit.”</p>
+<pre><code class="language-r">qc.overfit &lt;- qgcomp.glm.boot(y ~ bs(iron) + bs(cadmium) + bs(lead) +
+                         mage35 + bs(arsenic) + bs(magnesium) + bs(manganese) + bs(mercury) + 
+                         bs(selenium) + bs(silver) + bs(sodium) + bs(zinc),
+                         expnms=Xnm,
+                         metals, family=gaussian(), q=8, B=10, degree=1)
+qc.overfit
+</code></pre>
+<pre><code>## Mixture slope parameters (bootstrap CI):
+## 
+##              Estimate Std. Error  Lower CI Upper CI t value Pr(&gt;|t|)
+## (Intercept) -0.064420   0.129559 -0.318350 0.189511 -0.4972   0.6193
+## psi1         0.029869   0.032997 -0.034804 0.094543  0.9052   0.3659
+</code></pre>
+<pre><code class="language-r">plot(qc.overfit, pointwiseref = 5)
+</code></pre>
+<p><img src="data:image/png;base64,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iuhD5dtLp04Mi++//75sU0vHjh3rJk2alAQBmP71r3+5VVZZJbmPjdNPP91tueWWKfv0jxAQAkJACAgBIZCKgAhHKh76TwgIASEgBISAECgCAsoeVgRQVaQQEAJCQAgIASGQioAIRyoe+k8ICAEhIASEgBAoAgIiHEUAVUUKASEgBISAEBACqQiIcKTiof+EgBAQAkJACAiBIiAgwlEEUFWkEBACQkAICAEhkIpArONw/PDDD06RPFMfmP4TAkJACJQbAdI6hEMElLtOun/8EYgl4SCK57777msRPfOFkERqP/74owXqyrcMXecsV8zSpUsNS+GRPwJrr722W7Jkifv3v/+dfyG60jVu3NgtWrTIgvAJjvwQgCyA41dffZVfAYmrtthiC7dgwYK8r9eFtYlALONw8CgIsoWGI1+54IIL3A477OCOOeaYfIvQdQkEevXq5bp16+batWsnPBqAwKGHHup+//vfu2233bYBpejS3Xff3T3xxBNuvfXWExh5IkAU5f3228/NmTMnzxKcI1klwRklQiAXBGKp4aABaDkakq8EU8wvfvEL98tf/jIXPHRuCAE+LKuuuqpwDOGS67+MKvlA633MFbm656+++urCsS4sWe9B84voXcwaMp1YIARiq+FoaPveffddh1mlWbNmDS2qpq9HbQqGqGAl+SMwd+5c16pVK3sn8y9FV86aNcttt912NpgQGvkhgPZ49uzZbrfddsuvAF0lBPJEoGoJR5546DIhIASEgBAQAkKgCAjE1qSSTVth6m+88YbbYIMNIm2677zzjhXTunXrZHFR+5IHa3Tju+++MwcwktCtscYadVD4+9//bmaV5s2b27FPPvnELV682LabNm3qWCTOZcIxCrP63t9axTQdjvgefPTRR0lYeFdbtmzp/va3v5nPFwf4X6aCJETurbfecptttpn5XPy0N/pdTYd78DptC4GGIPDzSxLSkALKdS3ZWwcPHuywjd97772WsXWdddZJVueOO+5wb7/9tps6daplnd18881d1L7kBTW6gaf6oEGD7CM9atQod8ABB6T4zlxzzTXuyy+/dH/5y1/c/Pnz3Y477uiGDBnimLny4YcfGkHZcMMNaxS9n5pdH45hzCDJmd7fn0qura1MOELaXnzxRXvvnnvuOffee++5XXfd1Z133nkGEu/jJpts4tZcc83aAi1Na1999VXXt29f16VLl5TwAlEYQ+YyfQfS3EK7hUBuCJCevhLlzTffXHHDDTdY1V9//fXktm/LqaeeapsJB6kVftuvg/v8+bW6/vOf/7xi8uTJ1vw//elPyW12JKZwrnj44YftGJj16NHD9p111lkrEhqOFYkRuh3TnxUr6sMxjFl972+tYpoJR4/J999/v+L0009fkegkVyRI8Irhw4evSHSi/rDWCQTmzZu34rrrrlvRu3fvFcuXL0/BJArjqH0pF+kfIVAABCo20ug//vEPM6VAr3BqXLhwYZJpff311464BwgzXYh9ELUveUENb2TCkRkqnTt3NnTGjh1rTmYff/yxY6Q5evRod84555hJq4bhSzY9E45RmGU6P1loDW5kg8uYMWNchw4dTJOBFjPRubqRI0e6c88918xaNQhbnSYz/RrtRtTU1SiMo/bVKVQ7hEADEahYHw46w//85z/WfAgFUze9MCXWH2MfpCNqnz+/lteZcPS4PPDAA45ZPwMGDDBb8D333GMmGPxhEiMjt8022/hTa3adCccWLVq4MGbEQfDvaPj9rVkQEw3PhCO4gNlLL73kbrnlFoO8vQ1WAAAIzElEQVQJ4nHwwQfbrJWHHnrIvfDCC46YJ5L0CERhHLUvfQk6IgTyQ6BiNRzYarHhIu+//77beOONkwistdZaSadGHKGYtx+1L3lBDW9kwhFY8I/BhwP7LsSN0frTTz9tiC1btkz28v+9O5lwjMIs0/n/K7ImV/XhgoMoTpB+gIGPFo7jiN7H7F6ZKIyj9mVXms4SAtkjUNHTYnEC/fTTT90XX3zhrrrqKvfZZ585VP/9+/e3kQ4OZphSTjnlFIvwyOgnvC97qKrzzIQ93F177bVmduIjDrFAmwGO3bt3d8cdd1xSg4H3P9Eyr7zySiMfjIq6du3q/OyV6kQou1ZlwrFfv36RmIXfXzk7OnPwDr+PRBZFQ3nIIYe4CRMmmNnkyCOPtAfDb5/ziRPDrJWEz0KSjGT35Kr7rITvkOFDEESPI1GDwxhHvb/VjYxaVw4EKppwABjhz/kxRQnTDukUWbxE7fPHanmdCccoXHI9P6qMatyXCZeoY1H7qhGXXNuUKy65np9rfarx/CjMovZVY9vVpvIgUPGEozyw6a5CQAgIASEgBIRALgj8NPTP5SqdKwSEgBAQAkJACAiBHBAQ4cgBLJ0qBISAEBACQkAI5IeACEd+uOkqISAEhIAQEAJCIAcERDhyAEunlgYBZm8w+yWT7L333pbxMtM5N998s81cynSOjtVFAMfBK664wg4QQvywww6zbcKI+ymoda/SHiEgBIRAZgREODLjo6MxReDRRx91v/nNbzLWDsKRCOuc8RwdrIsAuTaIJIvss88+ye26Z2qPEBACQiB7BEQ4ssdKZ5YBAWKC9OzZ02299dbu5JNPtoR8VCORS8OyhL788su2n6RzRPQ85phjXCLvixs2bJj74IMP3P/93/9ZLJZg1adMmWJkhcyixx57rCNx1bfffuvatGnj5syZY6cm8u64ESNGOMo//vjj3V577WV1IE6Jl9tvv93tueeedozQ2kgi3YA744wz3K9//Wu3xRZbWD3YT/ySRK4aNk0ojxgxQ4cOdWeffbZlO77//vstG2r79u0tCdkee+xhWXz9NX5N9l40PFtttZUbOHCghfnmWLp7fP755+53v/udnQ9Gl112mRWVDjtCYhO+nhgss2bNchdccIG/dXINmaONrVq1cpdUZv7HZFu0IQSEQGkQEOEoDc66S54IdOvWzW233XYukaDPOnY6Q4SAb2gvCFhEltsbb7zRIs6SW2PSpEmOgEdET3zssccsKFTw9hy78847jbyQtZXw7ATdIkAXpIYQ2RAPiA7lE9odckH2zUSiO/fII4+4iRMnukTyQJdIbmf3gJy89tprltdj2rRpjrDvM2bMcM8//7ylTkdrALHxQmZTwnQTxfWVV16xazt27OjIzkuobqLnkgU1qjMnINtJJ51kmECUfMr2dPe4++673fbbb+8SCePczJkzLUjekiVL0mJ3/fXXWzA3cCEr8D//+U9fbVtDYCB006dPN0JCQL0FCxaknKN/hIAQEAJhBEQ4wojo/9ggQKdIx0/nSvA2yAcj7kWLFqXUcZdddrFoqIRe32GHHRwdYjqBCBCR9plnnjHtAv4KRFVFjjrqKNe6dWsjHffdd59FU2U/mg+SYRHJEk0B0WrxbTjiiCPchhtu6Jo2bWopwB988EG36aabmuaiU6dOVi7EhnplEvKBbLTRRhZ+H1MRxIHIuW+99ZZFzA2ahdiePXu21ZXom5CP+gQiRWROiBlRYsGSkP9ILtj5+zz++OPWZnxtbr31VverX/0qiaE/R2shIASEQBgBEY4wIvq/LAigPcAEgpDMjOixdKhk/fWRZH3E2KCmgPPXX399ViZcg1kjnRAKG20GxIJl3333NROIPx+Ss9JKK1m4fL+vUaNGftOtssoqVj86WRYv5OvxZc+dO9ecXseNG2dEiEycCO3ygubAiy8fUxBEAFOMr99NN91k0XT9uWAAJrQTWXfddf0hW0fdA7MNZA0iA0Gh3h6jXLDzN6KdZGj2dTzhhBMc4bIlQkAICIFMCIhwZEJHx0qGAKYKRswI5hP8A+jE8VXAfIFgqqBDDSbqswNp/kBU6MSDgrYCrQY+FPh70PFi+kDQAKBBQONBJ4o5BcHnA9MFJpDx48eb3waajieffNLKp06M+tEWMIujT58+5v+AtgKfCbQqkAR8L5D58+ebKcV3+rYz8Yf6ou2A1FC3nXfe2WEOIYeNF4799re/TWICqfGS7h7k0PjDH/5gOYYgG2iACPGfTqJwC57buXNnaxMaHuqJSShsdgmer20hIASEAAhk1vUKIyFQIgToxLp06eIwZdApYvJALrzwQluuvvpq69S8+SObauHQiQYDwoBzI4L24o9//KNpINAW0PHSqeMzMWTIECM1OJMyYh8wYIClOmc0z5RQTCM4cjJll3IOOuggIy7e4RT/D86hw+Y8CApagN13391MLziD4kPRpEkTt+WWW0Y2ASdQ6oGpAsLDttdm+Avw7aCzxzzCvbyAX9Q9cGIloSGOnpC4HXfc0drrrwuv11lnHXsGtOHyyy8PH7ZsrdyLGSyrrbaatYfnIxECQkAIZEJAuVQyoaNjJUdg8eLFpg0I35hOPZ9sqpgu6GSjBPNJ0CwSdQ7E55ZbbjGtB2WFz4ewoEUJ3wMtCvvx+/CCRoOZKXTo9Ul9daMsfFkwkzATZ968eVZkunughcFcs9Zaa9V36+TxTNhxEoSKlPBBDUzyYm0IASEgBEIIyKQSAkT/lhcBzAJRkg/ZoJwwEQiWHSYPwWPhbbQMUeej0Yi6B5qHINmgPLQi2ZANzo26F/u9UBYp2cOS7h7UPxeyQblR7QreDw2RyEYQEW0LASGQCQFpODKho2M1jwCaFaautkyYWeIoaFLee+89czSNY/1UJyEgBISAR0CEwyOhtRAQAkJACAgBIVA0BGRSKRq0KlgICAEhIASEgBDwCIhweCS0FgJCQAgIASEgBIqGgAhH0aBVwUJACAgBISAEhIBH4P8Bjut7VQSO2dUAAAAASUVORK5CYII=" alt="plot of chunk grafwarn" /></p>
+<p>Here, there is little statistical evidence for even a linear trend, which makes the
+smoothed conditional fit appear to be overfit. The smooth conditional fit can be turned off, as below.</p>
+<pre><code class="language-r">plot(qc.overfit, flexfit = FALSE, pointwiseref = 5)
+</code></pre>
+<p>![plot of chunk grafwarn 2](figure/grafwarn 2-1.png)</p>
+<h3 id="example-6-miscellaneous-other-ways-to-allow-non-linearity">Example 6: miscellaneous other ways to allow non-linearity.</h3>
+<p>Note that these are included as examples of <em>how</em> to include non-linearities, and are not intended as
+a demonstration of appropriate model selection. In fact, qc.fit7b is generally a bad idea in small
+to moderate sample sizes due to large numbers of parameters.</p>
+<h4 id="using-indicator-terms-for-each-quantile">using indicator terms for each quantile</h4>
+<pre><code class="language-r">qc.fit7a &lt;- qgcomp.glm.boot(y ~ factor(iron) + lead + cadmium + 
+                         mage35 + arsenic + magnesium + manganese + mercury + 
+                         selenium + silver + sodium + zinc,
+                         expnms=newXnm,
+                         metals, family=gaussian(), q=8, B=20, deg=2)
+# underlying fit
+summary(qc.fit7a$fit)$coefficients
+</code></pre>
+<pre><code>##                   Estimate Std. Error    t value     Pr(&gt;|t|)
+## (Intercept)   -0.052981109 0.08062430 -0.6571357 5.114428e-01
+## factor(iron)1  0.046571725 0.09466914  0.4919420 6.230096e-01
+## factor(iron)2 -0.056984300 0.09581659 -0.5947227 5.523395e-01
+## factor(iron)3  0.143813131 0.09558055  1.5046276 1.331489e-01
+## factor(iron)4  0.053319057 0.09642069  0.5529835 5.805601e-01
+## factor(iron)5  0.303967859 0.09743261  3.1197753 1.930856e-03
+## factor(iron)6  0.246259568 0.09734385  2.5297907 1.176673e-02
+## factor(iron)7  0.447045591 0.09786201  4.5681217 6.425565e-06
+## lead          -0.009210341 0.01046668 -0.8799679 3.793648e-01
+## cadmium       -0.010503041 0.01086440 -0.9667387 3.342143e-01
+## mage35         0.081114695 0.07274583  1.1150426 2.654507e-01
+## arsenic        0.021755516 0.02605850  0.8348720 4.042502e-01
+## magnesium     -0.010758356 0.02469893 -0.4355798 6.633587e-01
+## manganese      0.004418266 0.02551449  0.1731670 8.626011e-01
+## mercury        0.003913896 0.02448078  0.1598763 8.730531e-01
+## selenium      -0.058085344 0.05714805 -1.0164012 3.100059e-01
+## silver         0.020971562 0.02407397  0.8711302 3.841658e-01
+## sodium        -0.062086322 0.02404447 -2.5821454 1.014626e-02
+## zinc           0.017078438 0.02392381  0.7138679 4.756935e-01
+</code></pre>
+<pre><code class="language-r">plot(qc.fit7a)
+</code></pre>
+<p>![plot of chunk n-lin exs](figure/n-lin exs-1.png)</p>
+<h4 id="interactions-between-indicator-terms">interactions between indicator terms</h4>
+<pre><code class="language-r">qc.fit7b &lt;- qgcomp.glm.boot(y ~ factor(iron)*factor(lead) + cadmium + 
+                         mage35 + arsenic + magnesium + manganese + mercury + 
+                         selenium + silver + sodium + zinc,
+                         expnms=newXnm,
+                         metals, family=gaussian(), q=8, B=10, deg=3)
+# underlying fit
+#summary(qc.fit7b$fit)$coefficients
+plot(qc.fit7b)
+</code></pre>
+<p>![plot of chunk n-lin exs 2](figure/n-lin exs 2-1.png)</p>
+<h4 id="breaks-at-specific-quantiles-these-breaks-act-on-the-quantized-basis">breaks at specific quantiles (these breaks act on the quantized basis)</h4>
+<pre><code class="language-r">qc.fit7c &lt;- qgcomp.glm.boot(y ~ I(iron&gt;4)*I(lead&gt;4) + cadmium + 
+                         mage35 + arsenic + magnesium + manganese + mercury + 
+                         selenium + silver + sodium + zinc,
+                         expnms=newXnm,
+                         metals, family=gaussian(), q=8, B=10, deg=2)
+# underlying fit
+summary(qc.fit7c$fit)$coefficients
+</code></pre>
+<pre><code>##                                      Estimate Std. Error      t value
+## (Intercept)                     -5.910113e-02 0.05182385 -1.140423351
+## I(iron &gt; 4)TRUE                  3.649940e-01 0.06448858  5.659824144
+## I(lead &gt; 4)TRUE                 -9.004067e-05 0.06181587 -0.001456595
+## cadmium                         -6.874749e-03 0.01078339 -0.637531252
+## mage35                           7.613672e-02 0.07255110  1.049422029
+## arsenic                          2.042370e-02 0.02578001  0.792230124
+## magnesium                       -3.279980e-03 0.02427513 -0.135116878
+## manganese                        1.055979e-02 0.02477453  0.426235507
+## mercury                          9.396898e-03 0.02435057  0.385900466
+## selenium                        -4.337729e-02 0.05670006 -0.765030761
+## silver                           1.807248e-02 0.02391112  0.755819125
+## sodium                          -5.537968e-02 0.02403808 -2.303831424
+## zinc                             2.349906e-02 0.02385762  0.984970996
+## I(iron &gt; 4)TRUE:I(lead &gt; 4)TRUE -1.828835e-01 0.10277790 -1.779405131
+##                                     Pr(&gt;|t|)
+## (Intercept)                     2.547332e-01
+## I(iron &gt; 4)TRUE                 2.743032e-08
+## I(lead &gt; 4)TRUE                 9.988385e-01
+## cadmium                         5.241120e-01
+## mage35                          2.945626e-01
+## arsenic                         4.286554e-01
+## magnesium                       8.925815e-01
+## manganese                       6.701456e-01
+## mercury                         6.997578e-01
+## selenium                        4.446652e-01
+## silver                          4.501639e-01
+## sodium                          2.169944e-02
+## zinc                            3.251821e-01
+## I(iron &gt; 4)TRUE:I(lead &gt; 4)TRUE 7.586670e-02
+</code></pre>
+<pre><code class="language-r">plot(qc.fit7c)
+</code></pre>
+<p>![plot of chunk n-lin exs 3](figure/n-lin exs 3-1.png)</p>
+<p>Note one restriction on exploring non-linearity: while we can use flexible functions such as splines for individual exposures, the overall fit is limited via the <code>degree</code> parameter to polynomial functions (here a quadratic polynomial fits the non-linear model well, and a cubic polynomial fits the non-linear/non-homogeneous model well - though this is an informal argument and does not account for the wide confidence intervals). We note here that only 10 bootstrap iterations are used to calculate confidence intervals (to increase computational speed for the example), which is far too low.</p>
+<h4 id="statistical-approach-explore-non-linearity-in-a-correlated-subset-of-exposures-using-splines">Statistical approach explore non-linearity in a correlated subset of exposures using splines</h4>
+<p>The graphical approaches don’t give a clear picture of which model might be preferred, but we can compare the model fits using AIC, or BIC (information criterion that weigh model fit with over-parameterization). Both of these criterion suggest the linear model fits best (lowest AIC and BIC), which suggests that the apparently non-linear fits observed in the graphical approaches don’t improve prediction of the health outcome, relative to the linear fit, due to the increase in variance associated with including more parameters.</p>
+<pre><code class="language-r">AIC(qc.fit6lin$fit)
+</code></pre>
+<pre><code>## [1] 676.0431
+</code></pre>
+<pre><code class="language-r">AIC(qc.fit6nonlin$fit)
+</code></pre>
+<pre><code>## [1] 682.7442
+</code></pre>
+<pre><code class="language-r">AIC(qc.fit6nonhom$fit)
+</code></pre>
+<pre><code>## [1] 705.6187
+</code></pre>
+<pre><code class="language-r">BIC(qc.fit6lin$fit)
+</code></pre>
+<pre><code>## [1] 733.6346
+</code></pre>
+<pre><code class="language-r">BIC(qc.fit6nonlin$fit)
+</code></pre>
+<pre><code>## [1] 765.0178
+</code></pre>
+<pre><code class="language-r">BIC(qc.fit6nonhom$fit)
+</code></pre>
+<pre><code>## [1] 898.9617
+</code></pre>
+<p>More examples on advanced topics can be viewed in the other package vignette.</p>
+<h2 id="faq">FAQ</h2>
+<h3 id="why-don-t-i-get-weights-from-the-boot-or-ee-functions">Why don’t I get weights from the <code>boot</code> or <code>ee</code> functions?</h3>
+<p>Users often use the <code>qgcomp.*.boot</code> or <code>qgcomp.*.ee</code> functions because they want to marginalize over confounders or fit a non-linear joint exposure function. In both cases, the overall exposure response will no longer correspond to a simple weighted average of model coefficients, so none of the <code>qgcomp.*.boot</code> or <code>qgcomp.*.ee</code> functions will calculate weights. In most use cases, the weights would vary according to which level of joint exposure you’re at, so it is not a straightforward proposition to calculate them (and you may not wish to report 4 sets of weights if you use the default <code>q=4</code>). If you fit an otherwise linear model, you can get weights from a <code>qgcomp.*.noboot</code> which will be very close to the weights you might get from a linear model fit via <code>qgcomp.*.boot</code> functions, but be explicit that the weights come from a different model than the inference about joint exposure effects.</p>
+<h3 id="do-i-need-to-model-non-linearity-and-non-additivity-of-exposures">Do I need to model non-linearity and non-additivity of exposures?</h3>
+<p>Maybe. The inferential object of qgcomp is the set of \(\psi\) parameters that correspond to a joint exposure response. As it turns out, with correlated exposures non-linearity can disguise itself as non-additivity (Belzak and Bauer [2019] Addictive Behaviors). If we were inferring independent effects, this distinction would be crucial, but for joint effects it may turn out that it doesn’t matter much if you model non-linearity in the joint response function through non-additivity or non-linearity of individual exposures in a given study. Models fit in qgcomp still make the crucial assumption that you are able to model the joint exposure response via parametric models, so that assumption should not be forgotten in an effort to try to disentagle non-linearity (e.g. quadratic terms of exposures) from non-additivity (e.g. product terms between exposures). The important part to note about parametric modeling is that we have to explicitly tell the model to be non-linear, and no adaptation to non-linear settings will happen automatically. Exploring non-linearity is not a trivial endeavor.</p>
+<h3 id="do-i-have-to-use-quantiles">Do I have to use quantiles?</h3>
+<p>No. You can turn off “quantization” by setting <code>q=NULL</code> or you can supply your own categorization cutpoints via the “breaks” argument. It is up to the user to interpret the results if either of these options is taken. Frequently, <code>q=NULL</code> is used in concert with standardizing exposure variables by dividing them by their interquartile ranges (IQR). The joint exposure response can then be interpreted as the effect of an IQR change in all exposures. Using IQR/2 (with or without a log transformation before hand) will yield results that are most (roughly) compatible with the package defaults (<code>q=4</code>) but that does not require quantization. Quantized variables have nice properties: they prevent extrapolation and reduce influence of outliers, but the choice of how to include exposures in the model should be a deliberate and well-informed one.</p>
+<h3 id="can-i-cite-this-document">Can I cite this document?</h3>
+<p>Probably not in a scientific manuscript. If you find an idea here that is not published anywhere else and wish to develop it into a full manuscript, feel free! (But probably check with <a href="mailto:alex.keil@nih.gov">alex.keil@nih.gov</a> to ask if a paper is already in development.)</p>
+<h3 id="where-else-can-i-get-help">Where else can I get help?</h3>
+<p>The vignettes of the package and the help files of the functions give many, many examples of usage. Additionally, some edge case or interesting applications in github gists available at <a href="https://gist.github.com/alexpkeil1">https://gist.github.com/alexpkeil1</a>.</p>
+<h2 id="references">References</h2>
+<p>Alexander P. Keil, Jessie P. Buckley, Katie M. O’Brien, Kelly K. Ferguson, Shanshan Zhao, Alexandra J. White. A quantile-based g-computation approach to addressing the effects of exposure mixtures. <a href="https://doi.org/10.1289/EHP5838">https://doi.org/10.1289/EHP5838</a></p>
+<h2 id="acknowledgments">Acknowledgments</h2>
+<p>The development of this package was supported by NIH Grant RO1ES02953101. Invaluable code testing has been performed by Nicole Niehoff, Michiel van den Dries, Emily Werder, Jessie Buckley, Barrett Welch, Che-Jung (Rong) Chang, various github users, and Katie O’Brien.</p>
+<pre><code class="language-r"># return to standard processing
+future::plan(future::sequential) # return to standard evaluation
+</code></pre>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-core.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/autoloader/prism-autoloader.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/combine/npm/katex/dist/katex.min.js,npm/katex/dist/contrib/auto-render.min.js,npm/@xiee/utils/js/render-katex.js" defer></script>
+</body>
+</html>

@@ -1,3 +1,15 @@
+# qgcomp v2.16.4
+## Major changes
+- Added glm.ee function to use estimating equations approach (allows non-linear and longitudinal models without bootstrapping)
+
+## Minor changes
+- Split vignette into two vignettes and added examples
+
+## Bug fixes
+- Mice function (mice.impute.leftcenslognorm) to allow empty prediction sets: fixed a bug that led to hidden failures resulting in very low values for imputations
+- Fixed glm.ee for Tibbles, non-linear models (which never made it to CRAN release)
+
+
 # qgcomp v2.15.2
 ## Major changes
 - Added multinomial models (qgcomp.multinomial.noboot and qgcomp.multinomial.boot)
