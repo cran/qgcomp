@@ -248,6 +248,16 @@ wtd = qgcomp.glm.noboot(y~., expnms = Xnm,q=4, data = metals[,c(Xnm, covars, "y"
 wtd2 = qgcomp.glm.ee(y~., expnms = Xnm,q=4, data = metals[,c(Xnm, covars, "y")], weights=metals$samplingweights)
 #wtd3 = qgcomp.glm.boot(y~., expnms = Xnm,q=4, data = metals[,c(Xnm, covars, "y")], weights=metals$samplingweights)
 
+# unweighted
+uw
+# weighted with invalid standard error, confidence interval
+wtd
+# weighted with valid (robust) standard error, confidence interval
+wtd2
+# weighted with valid (bootstrap) standard error, confidence interval
+#wtd3
+
+
 ## ----md1a---------------------------------------------------------------------
 Xnm <- c(
     'arsenic','barium','cadmium','calcium','chromium','copper',

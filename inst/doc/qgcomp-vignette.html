@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>The qgcomp package: g-computation on exposure quantiles</title>
+<style type="text/css">
+/**
+ * Prism.s theme ported from highlight.js's xcode style
+ */
+pre code {
+  padding: 1em;
+}
+.token.comment {
+  color: #007400;
+}
+.token.punctuation {
+  color: #999;
+}
+.token.tag,
+.token.selector {
+  color: #aa0d91;
+}
+.token.boolean,
+.token.number,
+.token.constant,
+.token.symbol {
+  color: #1c00cf;
+}
+.token.property,
+.token.attr-name,
+.token.string,
+.token.char,
+.token.builtin {
+  color: #c41a16;
+}
+.token.inserted {
+  background-color: #ccffd8;
+}
+.token.deleted {
+  background-color: #ffebe9;
+}
+.token.operator,
+.token.entity,
+.token.url,
+.language-css .token.string,
+.style .token.string {
+  color: #9a6e3a;
+}
+.token.atrule,
+.token.attr-value,
+.token.keyword {
+  color: #836c28;
+}
+.token.function,
+.token.class-name {
+  color: #DD4A68;
+}
+.token.regex,
+.token.important,
+.token.variable {
+  color: #5c2699;
+}
+.token.important,
+.token.bold {
+  font-weight: bold;
+}
+.token.italic {
+  font-style: italic;
+}
+</style>
+<style type="text/css">
+body {
+  font-family: sans-serif;
+  max-width: 800px;
+  margin: auto;
+  padding: 1em;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+body, .footnotes, code { font-size: .9em; }
+li li { font-size: .95em; }
+*, *:before, *:after {
+  box-sizing: inherit;
+}
+pre, img { max-width: 100%; }
+pre, pre:hover {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+pre code {
+  display: block;
+  overflow-x: auto;
+}
+code { font-family: 'DejaVu Sans Mono', 'Droid Sans Mono', 'Lucida Console', Consolas, Monaco, monospace; }
+:not(pre) > code, code[class] { background-color: #F8F8F8; }
+code.language-undefined, pre > code:not([class]) {
+  background-color: inherit;
+  border: 1px solid #eee;
+}
+table {
+  margin: auto;
+  border-top: 1px solid #666;
+}
+table thead th { border-bottom: 1px solid #ddd; }
+th, td { padding: 5px; }
+thead, tfoot, tr:nth-child(even) { background: #eee; }
+blockquote {
+  color: #666;
+  margin: 0;
+  padding-left: 1em;
+  border-left: 0.5em solid #eee;
+}
+hr, .footnotes::before { border: 1px dashed #ddd; }
+.frontmatter { text-align: center; }
+#TOC .numbered li { list-style: none; }
+#TOC .numbered { padding-left: 0; }
+#TOC .numbered ul { padding-left: 1em; }
+table, .body h2 { border-bottom: 1px solid #666; }
+.body .appendix, .appendix ~ h2 { border-bottom-style: dashed; }
+.footnote-ref a::before { content: "["; }
+.footnote-ref a::after { content: "]"; }
+section.footnotes::before {
+  content: "";
+  display: block;
+  max-width: 20em;
+}
+
+@media print {
+  body {
+    font-size: 12pt;
+    max-width: 100%;
+  }
+  tr, img { page-break-inside: avoid; }
+}
+@media only screen and (min-width: 992px) {
+  pre { white-space: pre; }
+}
+</style>
+</head>
+<body>
+<div class="frontmatter">
+<div class="title"><h1>The qgcomp package: g-computation on exposure quantiles</h1></div>
+<div class="author"><h2>Alexander Keil</h2></div>
+<div class="date"><h3>2025-02-23</h3></div>
+</div>
+<div class="body">
+<h2 id="introduction">Introduction<a name="intro"></a></h2>
+<p><code>qgcomp</code> is a package to implement g-computation for analyzing the effects of exposure
+mixtures. Quantile g-computation yields estimates of the effect of increasing
+all exposures by one quantile, simultaneously. This, it estimates a “mixture
+effect” useful in the study of exposure mixtures such as air pollution, diet,
+and water contamination.</p>
+<p>Help for this package is available in the help files for individual functions, or in the package vignettes.</p>
+<p>The basic vignette can be viewed in R/Rstudio by running the following</p>
+<pre><code class="language-r">vignette(&quot;qgcomp-basic-vignette&quot;, &quot;qgcomp&quot;)
+</code></pre>
+<pre><code>## Warning: vignette 'qgcomp-basic-vignette' not found
+</code></pre>
+<p>The basic vignette covers:</p>
+<ol>
+<li>Introduction</li>
+<li>How to use the <code>qgcomp</code> package</li>
+<li>Example 1: linear model</li>
+<li>Example 2: conditional odds ratio, marginal odds ratio in a logistic model(#ex-logistic)</li>
+<li>Example 3: adjusting for covariates, plotting estimates</li>
+<li>Example 4: non-linearity (and non-homogeneity)</li>
+<li>Example 5: comparing model fits and further exploring non-linearity</li>
+<li>Example 6: miscellaneous other ways to allow non-linearity</li>
+<li>FAQ</li>
+</ol>
+<p>The advanced vignette can be viewed in R/Rstudio by running the following</p>
+<pre><code class="language-r">vignette(&quot;qgcomp-advanced-vignette&quot;, &quot;qgcomp&quot;)
+</code></pre>
+<pre><code>## Warning: vignette 'qgcomp-advanced-vignette' not found
+</code></pre>
+<p>The advanced vignette covers:</p>
+<ol>
+<li>Example 7: time-to-event analysis and parallel processing</li>
+<li>Example 8: clustering</li>
+<li>Example 9: partial effects</li>
+<li>Example 10: multinomial outcomes</li>
+<li>Example 11: sample weighting from, e.g. NHANES</li>
+<li>Missing data, limits of detection and multiple imputation</li>
+</ol>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-core.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/autoloader/prism-autoloader.min.js" defer></script>
+</body>
+</html>

@@ -1,7 +1,7 @@
 Package: qgcomp
 Title: Quantile G-Computation
-Version: 2.16.4
-Date: 2025-01-22
+Version: 2.17.4
+Date: 2025-02-23
 Authors@R: 
     person("Alexander", "Keil", , "alex.keil@nih.gov", role = c("aut", "cre"))
 Description: G-computation for a set of time-fixed exposures with
@@ -18,17 +18,17 @@ License: GPL (>= 2)
 URL: https://github.com/alexpkeil1/qgcomp/
 BugReports: https://github.com/alexpkeil1/qgcomp/issues
 Depends: R (>= 3.5.0)
-Imports: arm, future, future.apply, generics, ggplot2 (>= 3.3.0),
+Imports: AER, arm, future, future.apply, generics, ggplot2 (>= 3.3.0),
         grDevices, grid, gridExtra, nnet, numDeriv, pscl, rootSolve,
         stats, survival, tibble
 Suggests: broom, devtools, knitr, markdown, MASS, mice
 VignetteBuilder: knitr
 Encoding: UTF-8
 Language: en-US
-RoxygenNote: 7.3.1
+RoxygenNote: 7.3.2
 NeedsCompilation: no
-Packaged: 2025-01-22 05:48:28 UTC; keilap
+Packaged: 2025-02-23 19:03:03 UTC; keilap
 Author: Alexander Keil [aut, cre]
 Maintainer: Alexander Keil <alex.keil@nih.gov>
 Repository: CRAN
-Date/Publication: 2025-01-22 06:40:02 UTC
+Date/Publication: 2025-02-23 19:50:02 UTC

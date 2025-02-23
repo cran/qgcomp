@@ -1,3 +1,15 @@
+# qgcomp v2.17.3
+## Major changes
+- Added glm.tobit.noboot function to fit a Tobit model with qgcomp
+ 
+## Minor changes
+- Documentation improvements
+- Code hygeine to prevent issues with edge cases
+
+## Bug fixes
+- None
+
+
 # qgcomp v2.16.4
 ## Major changes
 - Added glm.ee function to use estimating equations approach (allows non-linear and longitudinal models without bootstrapping)

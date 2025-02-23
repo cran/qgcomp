@@ -35,6 +35,13 @@ cox <- function(){
   obj
 }
 
+# fake tobit family function
+tobit <- function(){
+  obj = gaussian(link="identity")
+  obj$family = "tobit"
+  obj
+}
+
 # fake zi family function
 zi <- function(){
   obj = binomial(link="log")
@@ -279,9 +286,9 @@ checknames <- function(terms){
   #' @param terms model terms from attr(terms(modelfunction, data), "term.labels")
   nonlin <- ifelse(sum(grep("\\(|\\:|\\^", terms))>0, TRUE, FALSE)
   if(nonlin){
-    return(FALSE)
+    FALSE
   }else{
-    return(TRUE)
+    TRUE
   }
 }
 

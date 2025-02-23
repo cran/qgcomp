@@ -143,10 +143,43 @@ section.footnotes::before {
 <div class="frontmatter">
 <div class="title"><h1>Basic topics for the qgcomp package: g-computation on exposure quantiles</h1></div>
 <div class="author"><h2>Alexander Keil</h2></div>
-<div class="date"><h3>2025-01-22</h3></div>
+<div class="date"><h3>2025-02-23</h3></div>
 </div>
 <div class="body">
-<h2 id="introduction">Introduction</h2>
+<h1 id="table-of-contents">Table of Contents</h1>
+<ol>
+<li>
+<p><a href="#intro">Introduction</a></p>
+</li>
+<li>
+<p><a href="#howto">How to use the <code>qgcomp</code> package</a></p>
+</li>
+<li>
+<p><a href="#ex-linear">Example 1: linear model</a></p>
+</li>
+<li>
+<p><a href="#ex-logistic">Example 2: conditional odds ratio, marginal odds ratio in a logistic model</a></p>
+</li>
+<li>
+<p><a href="#ex-logistic">Example 3: adjusting for covariates, plotting estimates</a></p>
+</li>
+<li>
+<p><a href="#ex-nonlin">Example 4: non-linearity (and non-homogeneity)</a></p>
+</li>
+<li>
+<p><a href="#ex-nonlin2">Example 5: comparing model fits and further exploring non-linearity</a></p>
+</li>
+<li>
+<p><a href="#ex-nonlin3">Example 6: miscellaneous other ways to allow non-linearity</a></p>
+</li>
+<li>
+<p><a href="#ex-faq">FAQ</a></p>
+</li>
+<li>
+<p><a href="#ack">Acknowledgments</a></p>
+</li>
+</ol>
+<h2 id="introduction">Introduction<a name="intro"></a></h2>
 <p><code>qgcomp</code> is a package to implement g-computation for analyzing the effects of exposure
 mixtures. Quantile g-computation yields estimates of the effect of increasing
 all exposures by one quantile, simultaneously. This, it estimates a “mixture
@@ -173,7 +206,7 @@ and selection of exposures that are sufficient to control co-pollutant confoundi
 <p>[
 \mathbb{E}(Y | \mathbf{X,\beta}) = \beta_0 + \beta_1 X_1 + \beta_2 X_2  + \beta_3 X_3
 ]</p>
-<p>with the true values of \(\beta_0=0, \beta_1 =0.25, \beta_2 =-0.1, \beta_3=0.05\), and \(X_1\) is strongly positively correlated with \(X_2\) ($\rho=0.95$) and negatively correlated with \(X_3\) ($\rho=-0.3$). In this simple setting, the parameter \(\psi_1\) will equal the sum of the \(\beta\) coefficients (0.2). Here we see that qgcomp estimates a value very close to 0.2 (as we increase sample size, the estimated value will be expected to become increasingly close to 0.2).</p>
+<p>with the true values of \(\beta_0=0, \beta_1 =0.25, \beta_2 =-0.1, \beta_3=0.05\), and \(X_1\) is strongly positively correlated with \(X_2\) (\(\rho=0.95\)) and negatively correlated with \(X_3\) (\(\rho=-0.3\)). In this simple setting, the parameter \(\psi_1\) will equal the sum of the \(\beta\) coefficients (0.2). Here we see that qgcomp estimates a value very close to 0.2 (as we increase sample size, the estimated value will be expected to become increasingly close to 0.2).</p>
 <pre><code class="language-r">library(&quot;qgcomp&quot;)
 set.seed(543210)
 qdat = simdata_quantized(n=5000, outcomtype=&quot;continuous&quot;, cor=c(.95, -0.3), b0=0, coef=c(0.25, -0.1, 0.05), q=4)
@@ -210,7 +243,7 @@ head(qdat)
 ## (Intercept) -0.0016583  0.0359609 -0.07214 0.068824 -0.0461   0.9632
 ## psi1         0.2035810  0.0219677  0.16053 0.246637  9.2673   &lt;2e-16
 </code></pre>
-<h2 id="how-to-use-the-qgcomp-package">How to use the <code>qgcomp</code> package</h2>
+<h2 id="how-to-use-the-qgcomp-package">How to use the <code>qgcomp</code> package<a name="howto"></a></h2>
 <p>Here we use a running example from the <code>metals</code> dataset from the from the package
 <code>qgcomp</code> to demonstrate some features of the package and method.</p>
 <p>Namely, the examples below demonstrate use of the package for:</p>
@@ -264,7 +297,7 @@ head(metals)
 ## 5 1.813458e+00             1
 ## 6 2.373849e+00             1
 </code></pre>
-<h3 id="example-1-linear-model">Example 1: linear model</h3>
+<h3 id="example-1-linear-model">Example 1: linear model<a name="ex-linear"></a></h3>
 <pre><code class="language-r"># we save the names of the mixture variables in the variable &quot;Xnm&quot;
 Xnm &lt;- c(
     'arsenic','barium','cadmium','calcium','chromium','copper',
@@ -391,7 +424,7 @@ newfit
 ##  -0.3566699   0.2663942
 </code></pre>
 <p>This equality is why we can fit qgcomp so efficiently under such a model, but <code>qgcomp</code> is a much more general method that can allow for non-linearity and non-additivity in the underlying model, as well as non-linearity in the overall model. These extensions are described in some of the following examples.</p>
-<h3 id="example-2-conditional-odds-ratio-marginal-odds-ratio-in-a-logistic-model">Example 2: conditional odds ratio, marginal odds ratio in a logistic model</h3>
+<h3 id="example-2-conditional-odds-ratio-marginal-odds-ratio-in-a-logistic-model">Example 2: conditional odds ratio, marginal odds ratio in a logistic model<a name="ex-logistic"></a></h3>
 <p>This example introduces the use of a binary outcome in <code>qgcomp</code> via the
 <code>qgcomp.glm.noboot</code> function, which yields a conditional odds ratio or the
 <code>qgcomp.glm.boot</code>, which yields a marginal odds ratio or risk/prevalence ratio. These
@@ -579,7 +612,7 @@ a smoothed (graphical) fit.</p>
 </code></pre>
 <p>Because qgcomp estimates a joint effect of multiple exposures, we cannot, in general, assess model fit by overlaying predictions from the plots above with the data. Hence, it is useful to explore non-linearity by fitting models that
 allow for non-linear effects, as in the next example.</p>
-<h3 id="example-4-non-linearity-and-non-homogeneity">Example 4: non-linearity (and non-homogeneity)</h3>
+<h3 id="example-4-non-linearity-and-non-homogeneity">Example 4: non-linearity (and non-homogeneity)<a name="ex-nonlin"></a></h3>
 <p><code>qgcomp</code> (specifically <code>qgcomp.*.boot</code> and <code>qgcomp.*.ee</code> methods) addresses non-linearity in a way similar to standard parametric regression models, which lends itself to being able to leverage R language features for n-lin parametric models (or, more precisely, parametric models that deviate from a purely additive, linear function on the link function basis via the use of basis function representation of non-linear functions).
 Here is an example where we use a feature of the R language for fitting models
 with interaction terms. We use <code>y~. + .^2</code> as the model formula, which fits a model
@@ -655,7 +688,7 @@ plot(qcee.fit5b)
 <p>Ideally, the smooth fit will look very similar to the model prediction regression
 line.</p>
 <h4 id="interpretation-of-model-parameters">Interpretation of model parameters</h4>
-<p>As the output below shows, setting “degree=2” yields a second parameter in the model fit ($\psi_2$). The output of qgcomp now corresponds to estimates of the marginal structural model given by
+<p>As the output below shows, setting “degree=2” yields a second parameter in the model fit (\(\psi_2\)). The output of qgcomp now corresponds to estimates of the marginal structural model given by
 [
 \mathbb{E}(Y^{\mathbf{X}_q}) = g(\psi_0 + \psi_1 S_q + \psi_2 S_q^2)
 ]</p>
@@ -669,7 +702,7 @@ line.</p>
 ## psi2        -0.19970    0.32507 -0.83682  0.43743 -0.6143   0.5395
 </code></pre>
 <p>so that \(\psi_2\) can be interpreted similar to quadratic terms that might appear in a generalized linear model. \(\psi_2\) estimates the change in the outcome for an additional unit of squared joint exposure, over-and-above the linear effect given by \(\psi_1\). Informally, this is a way of formally assessing specific types of non-linearity in the joint exposure-response curves, and there are many other (slightly incorrect but intuitively useful) ways of interpreting parameters for squared terms in regressions (beyond the scope of this document). Intuition from generalized linear models applies directly to the models fit by quantile g-computation.</p>
-<h3 id="example-5-comparing-model-fits-and-further-exploring-non-linearity">Example 5: comparing model fits and further exploring non-linearity</h3>
+<h3 id="example-5-comparing-model-fits-and-further-exploring-non-linearity">Example 5: comparing model fits and further exploring non-linearity<a name="ex-nonlin2"></a></h3>
 <p>Exploring a non-linear fit in settings with multiple exposures is challenging. One way to explore non-linearity, as demonstrated above, is to to include all 2-way interaction terms (including quadratic terms, or “self-interactions”). Sometimes this approach is not desired, either because the number of terms in the model can become very large, or because some sort of model selection procedure is required, which risks inducing over-fit (biased estimates and standard errors that are too small). Short of having a set of a priori non-linear terms to include, we find it best to take a default approach (e.g. taking all second order terms) that doesn’t rely on statistical significance, or to simply be honest that the search for a non-linear model is exploratory and shouldn’t be relied upon for robust inference. Methods such as kernel machine regression may be good alternatives, or supplementary approaches to exploring non-linearity.</p>
 <p>NOTE: qgcomp necessarily fits a regression model with exposures that have a small number of possible values, based on the quantile chosen. By package default, this is <code>q=4</code>, but it is difficult to fully examine non-linear fits using only four points, so we recommend exploring larger values of <code>q</code>, which will change effect estimates (i.e. the model coefficient implies a smaller change in exposures, so the expected change in the outcome will also decrease).</p>
 <p>Here, we examine a one strategy for default and exploratory approaches to mixtures that can be implemented in qgcomp using a smaller subset of exposures (iron, lead, cadmium), which we choose via the correlation matrix. High correlations between exposures may result from a common source, so small subsets of the mixture may be useful for examining hypotheses that relate to interventions on a common environmental source or set of behaviors. Note that we can still adjust for the measured exposures, even though only 3 our exposures of interest are considered as the mixture of interest. Note that we will require a new R package to help in exploring non-linearity: <code>splines</code>. Note that <code>qgcomp.glm.boot</code> must be used in order to produce the graphics below, as <code>qgcomp.glm.noboot</code> does not calculate the necessary quantities.</p>
@@ -744,7 +777,7 @@ smoothed conditional fit appear to be overfit. The smooth conditional fit can be
 <pre><code class="language-r">plot(qc.overfit, flexfit = FALSE, pointwiseref = 5)
 </code></pre>
 <p>![plot of chunk grafwarn 2](figure/grafwarn 2-1.png)</p>
-<h3 id="example-6-miscellaneous-other-ways-to-allow-non-linearity">Example 6: miscellaneous other ways to allow non-linearity.</h3>
+<h3 id="example-6-miscellaneous-other-ways-to-allow-non-linearity">Example 6: miscellaneous other ways to allow non-linearity<a name="ex-nonlin3"></a></h3>
 <p>Note that these are included as examples of <em>how</em> to include non-linearities, and are not intended as
 a demonstration of appropriate model selection. In fact, qc.fit7b is generally a bad idea in small
 to moderate sample sizes due to large numbers of parameters.</p>
@@ -863,21 +896,22 @@ summary(qc.fit7c$fit)$coefficients
 <pre><code>## [1] 898.9617
 </code></pre>
 <p>More examples on advanced topics can be viewed in the other package vignette.</p>
-<h2 id="faq">FAQ</h2>
-<h3 id="why-don-t-i-get-weights-from-the-boot-or-ee-functions">Why don’t I get weights from the <code>boot</code> or <code>ee</code> functions?</h3>
-<p>Users often use the <code>qgcomp.*.boot</code> or <code>qgcomp.*.ee</code> functions because they want to marginalize over confounders or fit a non-linear joint exposure function. In both cases, the overall exposure response will no longer correspond to a simple weighted average of model coefficients, so none of the <code>qgcomp.*.boot</code> or <code>qgcomp.*.ee</code> functions will calculate weights. In most use cases, the weights would vary according to which level of joint exposure you’re at, so it is not a straightforward proposition to calculate them (and you may not wish to report 4 sets of weights if you use the default <code>q=4</code>). If you fit an otherwise linear model, you can get weights from a <code>qgcomp.*.noboot</code> which will be very close to the weights you might get from a linear model fit via <code>qgcomp.*.boot</code> functions, but be explicit that the weights come from a different model than the inference about joint exposure effects.</p>
+<h2 id="faq">FAQ<a name="faq"></a></h2>
+<h3 id="why-don-t-i-get-weights-scaled-effects-from-the-boot-or-ee-functions-and-other-questions-about-the-weights-scaled-effect-sizes">Why don’t I get weights/scaled effects from the <code>boot</code> or <code>ee</code> functions? (and other questions about the weights/scaled effect sizes)</h3>
+<p>Users often use the <code>qgcomp.*.boot</code> or <code>qgcomp.*.ee</code> functions because they want to marginalize over confounders or fit a non-linear joint exposure function. In both cases, the overall exposure response will no longer correspond to a simple weighted average of model coefficients, so none of the <code>qgcomp.*.boot</code> or <code>qgcomp.*.ee</code> functions will calculate weights. In most use cases, the weights would vary according to which level of joint exposure you’re at, so it is not a straightforward proposition to calculate them (and you may not wish to report 4 sets of weights if you use the default <code>q=4</code>). That is, the contribution of each exposure to the overall effect will change across levels of exposure if there is any non-linearity, which makes the weights not useful as simple inferential tools (and, at best, an approximation). If you wish to have an approximation, then use a “noboot” method and report the weights from that along with a caveat that they are not directly applicable to the results in which non-linearity/non-additivity/marginalization-over-covariates is performed (using boot methods). If you fit an otherwise linear model, you can get weights from a <code>qgcomp.*.noboot</code> which will be very close to the weights you might get from a linear model fit via <code>qgcomp.*.boot</code> functions, but be explicit that the weights come from a different model than the inference about joint exposure effects.</p>
+<p>It should be emphasized here that the weights are not a stable or entirely useful quantity for many research goals. Qgcomp addresses the mixtures problem of variance inflation by focusing on a parameter that is less susceptible to variance inflation than independent effects (the psi parameters, or overall effects of a mixture). The weights are a form of independent effect and will always be sensitive to this issue, regardless of the statistical method that is used. Some statistical approaches to improving estimation of independent effects (e.g. setting <code>bayes=TRUE</code>) is accessible in many qgcomp functions, but these approaches universally introduce bias in exchange for reducing variance and shouldn’t be used without a good understanding of what shrinkage and penalization methods actually accomplish. Principled and rigorous integration of these statistical approaches with qgcomp is in progress, but that work is inherently more bespoke and likely will not be available in this R package. The shrinkage and penalization literature is large and outside the scope of this software and documentation, so no other guidance is given here. In any case, the calculated weights are only interpretable as proportional effect sizes in a setting in which there is linearity, additivity, and collapsibility, and so the package makes no efforts to try to introduce weights into other settings in which those assumptions may not be met. Outside of those narrow settings, the weights would have a dubious interpretation and the programming underlying the qgcomp package errs on the side of preventing the reporting of results that are mutually inconsistent. If you are using the <code>boot</code> versions of a qgcomp function in a setting in which you know that the weights are valid, it is very likely that you do not actually need to be using the <code>boot</code> versions of the functions.</p>
 <h3 id="do-i-need-to-model-non-linearity-and-non-additivity-of-exposures">Do I need to model non-linearity and non-additivity of exposures?</h3>
 <p>Maybe. The inferential object of qgcomp is the set of \(\psi\) parameters that correspond to a joint exposure response. As it turns out, with correlated exposures non-linearity can disguise itself as non-additivity (Belzak and Bauer [2019] Addictive Behaviors). If we were inferring independent effects, this distinction would be crucial, but for joint effects it may turn out that it doesn’t matter much if you model non-linearity in the joint response function through non-additivity or non-linearity of individual exposures in a given study. Models fit in qgcomp still make the crucial assumption that you are able to model the joint exposure response via parametric models, so that assumption should not be forgotten in an effort to try to disentagle non-linearity (e.g. quadratic terms of exposures) from non-additivity (e.g. product terms between exposures). The important part to note about parametric modeling is that we have to explicitly tell the model to be non-linear, and no adaptation to non-linear settings will happen automatically. Exploring non-linearity is not a trivial endeavor.</p>
 <h3 id="do-i-have-to-use-quantiles">Do I have to use quantiles?</h3>
-<p>No. You can turn off “quantization” by setting <code>q=NULL</code> or you can supply your own categorization cutpoints via the “breaks” argument. It is up to the user to interpret the results if either of these options is taken. Frequently, <code>q=NULL</code> is used in concert with standardizing exposure variables by dividing them by their interquartile ranges (IQR). The joint exposure response can then be interpreted as the effect of an IQR change in all exposures. Using IQR/2 (with or without a log transformation before hand) will yield results that are most (roughly) compatible with the package defaults (<code>q=4</code>) but that does not require quantization. Quantized variables have nice properties: they prevent extrapolation and reduce influence of outliers, but the choice of how to include exposures in the model should be a deliberate and well-informed one.</p>
+<p>No. You can turn off “quantization” by setting <code>q=NULL</code> or you can supply your own categorization cutpoints via the “breaks” argument. It is up to the user to interpret the results if either of these options is taken. Frequently, <code>q=NULL</code> is used in concert with standardizing exposure variables by dividing them by their interquartile ranges (IQR). The joint exposure response can then be interpreted as the effect of an IQR change in all exposures. Using IQR/2 (with or without a log transformation before hand) will yield results that are most (roughly) compatible with the package defaults (<code>q=4</code>) but that does not require quantization. Quantized variables have nice properties: they prevent extrapolation and reduce influence of outliers, but the choice of how to include exposures in the model should be a deliberate and well-informed one. There are examples of setting <code>q=NULL</code> in the help files for qgcomp.glm.boot and qgcomp.glm.ee, but this approach is available for any of the qgcomp methods (and is accomplished nearly 100% outside of the package functions, aside from setting <code>q=NULL</code>).</p>
 <h3 id="can-i-cite-this-document">Can I cite this document?</h3>
-<p>Probably not in a scientific manuscript. If you find an idea here that is not published anywhere else and wish to develop it into a full manuscript, feel free! (But probably check with <a href="mailto:alex.keil@nih.gov">alex.keil@nih.gov</a> to ask if a paper is already in development.)</p>
+<p>Probably not in a scientific manuscript. If you find an idea here that is not published anywhere else and wish to develop it into a full manuscript, feel free! (But probably check with <a href="mailto:alex.keil@nih.gov">alex.keil@nih.gov</a> to ask if a paper is already in development or is, perhaps, already published.)</p>
 <h3 id="where-else-can-i-get-help">Where else can I get help?</h3>
-<p>The vignettes of the package and the help files of the functions give many, many examples of usage. Additionally, some edge case or interesting applications in github gists available at <a href="https://gist.github.com/alexpkeil1">https://gist.github.com/alexpkeil1</a>.</p>
+<p>The vignettes of the package and the help files of the functions give many, many examples of usage. Additionally, some edge case or interesting applications in github gists available at <a href="https://gist.github.com/alexpkeil1">https://gist.github.com/alexpkeil1</a>. If you come up with an interesting problem that you think could be solved in this package, but is currently not, feel free to submit an issue on the package github page <a href="https://github.com/alexpkeil1/qgcomp/issues">https://github.com/alexpkeil1/qgcomp/issues</a>. Several additions to the package have already come about through that avenue.</p>
 <h2 id="references">References</h2>
 <p>Alexander P. Keil, Jessie P. Buckley, Katie M. O’Brien, Kelly K. Ferguson, Shanshan Zhao, Alexandra J. White. A quantile-based g-computation approach to addressing the effects of exposure mixtures. <a href="https://doi.org/10.1289/EHP5838">https://doi.org/10.1289/EHP5838</a></p>
-<h2 id="acknowledgments">Acknowledgments</h2>
-<p>The development of this package was supported by NIH Grant RO1ES02953101. Invaluable code testing has been performed by Nicole Niehoff, Michiel van den Dries, Emily Werder, Jessie Buckley, Barrett Welch, Che-Jung (Rong) Chang, various github users, and Katie O’Brien.</p>
+<h2 id="acknowledgments">Acknowledgments<a name="ack"></a></h2>
+<p>The development of this package was supported by NIH Grant RO1ES02953101. Invaluable code testing has been performed by Nicole Niehoff, Michiel van den Dries, Emily Werder, Jessie Buckley, Barrett Welch, Che-Jung (Rong) Chang, various github users, and Katie O’Brien. Thank you to Hanna Jardel for contributing the “qgcomp.tobit.noboot” function.</p>
 <pre><code class="language-r"># return to standard processing
 future::plan(future::sequential) # return to standard evaluation
 </code></pre>
