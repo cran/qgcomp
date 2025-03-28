@@ -89,7 +89,7 @@ qcboot.fit2
 ## ----logistic qgcompd, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
 qcboot.fit2b
 
-## ----adj4cov a, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
+## ----adj4cov-a, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
 
 qc.fit3 <- qgcomp.glm.noboot(y ~ mage35 + arsenic + barium + cadmium + calcium + chloride + 
                            chromium + copper + iron + lead + magnesium + manganese + 
@@ -97,9 +97,11 @@ qc.fit3 <- qgcomp.glm.noboot(y ~ mage35 + arsenic + barium + cadmium + calcium +
                          expnms=Xnm,
                          metals, family=gaussian(), q=4)
 qc.fit3
+
 plot(qc.fit3)
 
-## ----adj4cov b, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
+
+## ----adj4cov-b, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
 qcboot.fit3 <- qgcomp.glm.boot(y ~ mage35 + arsenic + barium + cadmium + calcium + chloride + 
                            chromium + copper + iron + lead + magnesium + manganese + 
                            mercury + selenium + silver + sodium + zinc,
@@ -114,22 +116,23 @@ qcee.fit3 <- qgcomp.glm.ee(y ~ mage35 + arsenic + barium + cadmium + calcium + c
                          metals, family=gaussian(), q=4)
 qcee.fit3
 
-## ----adj4cov c, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
-plot(qcee.fit3, pointwiseref = 3, flexfit = FALSE)
+## ----adj4cov-c, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
+qgcomp:::modelbound.ee(qcee.fit3)
+plot(qcee.fit3, pointwiseref = 3, flexfit = FALSE, modelbound=TRUE)
 plot(qcboot.fit3, pointwiseref = 3, flexfit = FALSE)
 
-## ----adj4cov d, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
+## ----adj4cov-d, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
 pointwisebound.boot(qcboot.fit3, pointwiseref=3)
 qgcomp:::modelbound.boot(qcboot.fit3)
 
-## ----n-lin non-hom intro, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
+## ----n-lin-non-hom-intro, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
 
 qcboot.fit4 <- qgcomp(y~. + .^2,
                          expnms=Xnm,
                          metals[,c(Xnm, 'y')], family=gaussian(), q=4, B=10, seed=125)
 plot(qcboot.fit4)
 
-## ----ovrl n-lin, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
+## ----ovrl-n-lin, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
 
 qcboot.fit5 <- qgcomp(y~. + .^2,
                          expnms=Xnm,
@@ -142,15 +145,15 @@ qcee.fit5b <- qgcomp.glm.ee(y~. + .^2,
                          rr=FALSE)
 plot(qcee.fit5b)
 
-## ----ovrl n-linb, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
+## ----ovrl-n-linb, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
 modelbound.boot(qcboot.fit5)
 pointwisebound.boot(qcboot.fit5)
 pointwisebound.noboot(qcee.fit5b)
 
-## ----ovrl n-lin psi interp, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
+## ----ovrl-n-lin-psi interp, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
 qcboot.fit5
 
-## ----graf n-lin 1, results='markup', fig.show='hold', fig.height=3, fig.width=7.5, cache=FALSE----
+## ----graf-n-lin-1, results='markup', fig.show='hold', fig.height=3, fig.width=7.5, cache=FALSE----
 library(splines)
 # find all correlations > 0.6 (this is an arbitrary choice)
 cormat = cor(metals[,Xnm])
@@ -176,19 +179,19 @@ qc.fit6nonhom <- qgcomp.glm.boot(y ~ bs(iron)*bs(lead) + bs(iron)*bs(cadmium) + 
                          expnms=newXnm,
                          metals, family=gaussian(), q=8, B=10, degree=3)
 
-## ----graf n-lin 1b, results='markup', fig.show='hold', fig.height=3, fig.width=7.5, cache=FALSE----
-pl.fit6lin <- plot(qc.fit6lin, suppressprint = TRUE, pointwiseref = 4)
-pl.fit6lin + coord_cartesian(ylim=c(-0.75, .75)) + 
+## ----graf-n-lin-1b, results='markup', fig.show='hold', fig.height=3, fig.width=7.5, cache=FALSE----
+pl_fit6lin <- plot(qc.fit6lin, suppressprint = TRUE, pointwiseref = 4)
+pl_fit6lin + coord_cartesian(ylim=c(-0.75, .75)) + 
   ggtitle("Linear fit: mixture of iron, lead, and cadmium")
 
-## ----graf n-lin 2, results='markup', fig.show='hold', fig.height=3, fig.width=7.5, cache=FALSE----
-pl.fit6nonlin <- plot(qc.fit6nonlin, suppressprint = TRUE, pointwiseref = 4)
-pl.fit6nonlin + coord_cartesian(ylim=c(-0.75, .75)) + 
+## ----graf-n-lin-2, results='markup', fig.show='hold', fig.height=3, fig.width=7.5, cache=FALSE----
+pl_fit6nonlin <- plot(qc.fit6nonlin, suppressprint = TRUE, pointwiseref = 4)
+pl_fit6nonlin + coord_cartesian(ylim=c(-0.75, .75)) + 
   ggtitle("Non-linear fit: mixture of iron, lead, and cadmium")
 
-## ----graf n-lin 3, results='markup', fig.show='hold', fig.height=3, fig.width=7.5, cache=FALSE----
-pl.fit6nonhom <- plot(qc.fit6nonhom, suppressprint = TRUE, pointwiseref = 4)
-pl.fit6nonhom + coord_cartesian(ylim=c(-0.75, .75)) + 
+## ----graf-n-lin 3, results='markup', fig.show='hold', fig.height=3, fig.width=7.5, cache=FALSE----
+pl_fit6nonhom <- plot(qc.fit6nonhom, suppressprint = TRUE, pointwiseref = 4)
+pl_fit6nonhom + coord_cartesian(ylim=c(-0.75, .75)) + 
   ggtitle("Non-linear, non-homogeneous fit: mixture of iron, lead, and cadmium")
 
 ## ----grafwarn, results='markup', fig.show='hold', fig.height=3, fig.width=7.5, cache=FALSE----
@@ -200,10 +203,10 @@ qc.overfit <- qgcomp.glm.boot(y ~ bs(iron) + bs(cadmium) + bs(lead) +
 qc.overfit
 plot(qc.overfit, pointwiseref = 5)
 
-## ----grafwarn 2, results='markup', fig.show='hold', fig.height=3, fig.width=7.5, cache=FALSE----
+## ----grafwarn-2, results='markup', fig.show='hold', fig.height=3, fig.width=7.5, cache=FALSE----
 plot(qc.overfit, flexfit = FALSE, pointwiseref = 5)
 
-## ----n-lin exs, results='markup', fig.show='hold', fig.height=3, fig.width=7.5, cache=FALSE----
+## ----n-lin-exs, results='markup', fig.show='hold', fig.height=3, fig.width=7.5, cache=FALSE----
 qc.fit7a <- qgcomp.glm.boot(y ~ factor(iron) + lead + cadmium + 
                          mage35 + arsenic + magnesium + manganese + mercury + 
                          selenium + silver + sodium + zinc,
@@ -213,7 +216,7 @@ qc.fit7a <- qgcomp.glm.boot(y ~ factor(iron) + lead + cadmium +
 summary(qc.fit7a$fit)$coefficients
 plot(qc.fit7a)
 
-## ----n-lin exs 2, results='markup', fig.show='hold', fig.height=3, fig.width=7.5, cache=FALSE----
+## ----n-lin-exs-2, results='markup', fig.show='hold', fig.height=3, fig.width=7.5, cache=FALSE----
 qc.fit7b <- qgcomp.glm.boot(y ~ factor(iron)*factor(lead) + cadmium + 
                          mage35 + arsenic + magnesium + manganese + mercury + 
                          selenium + silver + sodium + zinc,
@@ -223,7 +226,7 @@ qc.fit7b <- qgcomp.glm.boot(y ~ factor(iron)*factor(lead) + cadmium +
 #summary(qc.fit7b$fit)$coefficients
 plot(qc.fit7b)
 
-## ----n-lin exs 3, results='markup', fig.show='hold', fig.height=3, fig.width=7.5, cache=FALSE----
+## ----n-lin-exs-3, results='markup', fig.show='hold', fig.height=3, fig.width=7.5, cache=FALSE----
 qc.fit7c <- qgcomp.glm.boot(y ~ I(iron>4)*I(lead>4) + cadmium + 
                          mage35 + arsenic + magnesium + manganese + mercury + 
                          selenium + silver + sodium + zinc,
@@ -241,8 +244,4 @@ AIC(qc.fit6nonhom$fit)
 BIC(qc.fit6lin$fit)
 BIC(qc.fit6nonlin$fit)
 BIC(qc.fit6nonhom$fit)
-
-## ----parend, echo=TRUE--------------------------------------------------------
-# return to standard processing
-future::plan(future::sequential) # return to standard evaluation
 

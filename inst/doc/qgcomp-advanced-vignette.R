@@ -123,7 +123,7 @@ qgcomp.glm.noboot(y~ x1, data=datl$dat, family=gaussian(), q = NULL)
 #qgcomp.glm.noboot(y~ x1, data=datl$dat, id="id", family=gaussian(), q = NULL)
 #qgcomp.glm.boot(y~ x1, data=datl$dat, family=gaussian(), q = NULL, MCsize=1000)
 
-## ----clustering 2, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
+## ----clustering-2, results='markup', fig.show='hold', fig.height=5, fig.width=7.5, cache=FALSE----
 
 # clustering by specifying id parameter on
 #qgcomp.glm.boot(y~ x1, data=datl$dat, id="id", family=gaussian(), q = NULL, MCsize=1000, B = 5)

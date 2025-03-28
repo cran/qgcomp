@@ -1,3 +1,17 @@
+
+# qgcomp v2.18.4
+## Major changes
+- Added modelbound.ee function to generate confidence intervals for regression lines with estimating equation fits
+- Revamped underlying code to plots to facilitate integration/overlays
+
+## Minor changes
+- Implementing a few functions from `qgcompint` package to support consistency across packages
+- Documentation fixes (cch functions and missing plots/formulae in vignettes)
+
+## Bug fixes
+- fix bug in df.residual function that impacted integration with `mice` package
+
+
 # qgcomp v2.17.3
 ## Major changes
 - Added glm.tobit.noboot function to fit a Tobit model with qgcomp

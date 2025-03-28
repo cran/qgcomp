@@ -1,7 +1,7 @@
 Package: qgcomp
 Title: Quantile G-Computation
-Version: 2.17.4
-Date: 2025-02-23
+Version: 2.18.4
+Date: 2025-03-27
 Authors@R: 
     person("Alexander", "Keil", , "alex.keil@nih.gov", role = c("aut", "cre"))
 Description: G-computation for a set of time-fixed exposures with
@@ -27,8 +27,8 @@ Encoding: UTF-8
 Language: en-US
 RoxygenNote: 7.3.2
 NeedsCompilation: no
-Packaged: 2025-02-23 19:03:03 UTC; keilap
+Packaged: 2025-03-28 00:25:46 UTC; keilap
 Author: Alexander Keil [aut, cre]
 Maintainer: Alexander Keil <alex.keil@nih.gov>
 Repository: CRAN
-Date/Publication: 2025-02-23 19:50:02 UTC
+Date/Publication: 2025-03-28 05:50:02 UTC
