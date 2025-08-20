@@ -89,7 +89,7 @@ expnms=paste0("x", 1:2)
 f1 = survival::Surv(time, d)~x1 + x2 + z
 (fit1 <- survival::coxph(f1, data = dat))
 (obj <- qgcomp.cox.noboot(f1, expnms = expnms, data = dat))
-f1s = survival::Surv(time, d)~x1 + x2 + strata(z)
+f1s = survival::Surv(time, d)~x1 + x2 + survival::strata(z)
 (fit1s <- survival::coxph(f1s, data = dat))
 (objs <- qgcomp.cox.noboot(f1s, expnms = expnms, data = dat))
 #### now doing a case-cohort analysis

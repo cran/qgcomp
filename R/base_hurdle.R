@@ -104,7 +104,7 @@ hurdlemsm_fit <- function(
   names(thecall) <- gsub("f", "formula", names(thecall))
   names(thecall) <- gsub("qdata", "data", names(thecall))
   m <- match(c("formula", "data", "weights", "offset"), names(thecall), 0L)
-  hasweights = ifelse("weights" %in% names(thecall), TRUE, FALSE)
+  hasweights = ("weights" %in% names(thecall))
   thecall <- thecall[c(1L, m)]
   thecall$drop.unused.levels <- TRUE
   
@@ -283,15 +283,16 @@ qgcomp.hurdle.noboot <- function(f,
   origcall <- thecall <- match.call(expand.dots = FALSE)
   names(thecall) <- gsub("f", "formula", names(thecall))
   m <- match(c("formula", "data", "weights", "offset"), names(thecall), 0L)
-  hasweights = ifelse("weights" %in% names(thecall), TRUE, FALSE)
+  hasweights = ("weights" %in% names(thecall))
   thecall <- thecall[c(1L, m)]
   thecall$drop.unused.levels <- TRUE
+  thecall$na.action <- identity
   
   thecall[[1L]] <- quote(stats::model.frame)
   thecalle <- eval(thecall, parent.frame())
   if(hasweights){
     data$weights <- as.vector(model.weights(thecalle))
-  } else data$weights = rep(1, nobs)
+  } else data$weights <- rep(1,nobs)
 
 
   if (is.null(expnms)) {
@@ -374,9 +375,6 @@ qgcomp.hurdle.noboot <- function(f,
     ci = lapply(ci, function(x) x[-1,]), 
     coef = estb, 
     var.coef = lapply(seb, function(x) c('(Intercept)' = x[1]^2, 'psi1' = x[2]^2)),
-    #covmat.coef = lapply(seb, function(x) c('(Intercept)' = x[1]^2, 'psi1' = x[2]^2)),
-    #covmat.coef=c('(Intercept)' = seb[1]^2, 'psi1' = seb[2]^2), 
-    #covmat.coef=lapply(vcov_mod, function(x) vc_comb(aname="(Intercept)", expnms=expnms, covmat = x)),
     covmat.coef= vcov_mod,
     ci.coef = ci,
     expnms=expnms, q=q, breaks=br, degree=1,
@@ -388,16 +386,8 @@ qgcomp.hurdle.noboot <- function(f,
     neg.size = neg.size,
     alpha=alpha, call=origcall
   )
-  #if(fit$family$family=='gaussian'){
-  #  res$tstat <- tstat
-  #  res$df <- df
-  #  res$pval <- pval
-  #}
-  #if(fit$family$family=='binomial'){
-    res$zstat <- tstat
-    res$pval <- pvalz
-  #}
     attr(res, "class") <- c("ziqgcompfit", attr(res, "class"))
+    res = .qgcomp_object_add(res, zstat=tstat, pval=pvalz)
     res
 }
 
@@ -564,7 +554,7 @@ qgcomp.hurdle.boot <- function(
   origcall <- thecall <- match.call(expand.dots = FALSE)
   names(thecall) <- gsub("f", "formula", names(thecall))
   m <- match(c("formula", "data", "weights", "offset"), names(thecall), 0L)
-  hasweights = ifelse("weights" %in% names(thecall), TRUE, FALSE)
+  hasweights = ("weights" %in% names(thecall))
   thecall <- thecall[c(1L, m)]
   thecall$drop.unused.levels <- TRUE
   
@@ -572,7 +562,7 @@ qgcomp.hurdle.boot <- function(
   thecalle <- eval(thecall, parent.frame())
   if(hasweights){
     data$weights <- as.vector(model.weights(thecalle))
-  } else data$weights = rep(1, nobs)
+  } else data$weights <- rep(1,nobs)
 
 
   if (is.null(expnms)) {
@@ -728,9 +718,8 @@ qgcomp.hurdle.boot <- function(
     bootsamps = bootsamps,
     alpha=alpha
   )
-  res$zstat <- tstat
-  res$pval <- pvalz
   attr(res, "class") <- c("ziqgcompfit", attr(res, "class"))
+  res = .qgcomp_object_add(res, zstat=tstat, pval=pvalz)
   res
 }
 

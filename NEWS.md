@@ -1,4 +1,15 @@
 
+# qgcomp v2.18.7
+## Major changes
+- None
+
+## Minor changes
+- export .qgcomp_object function and .qgcomp_object_add function. These function facilitate transportable methods that can be used in external extensions to qgcomp (.e.g)
+
+## Bug fixes
+- bug fix for weights, cluster in Cox models
+
+
 # qgcomp v2.18.4
 ## Major changes
 - Added modelbound.ee function to generate confidence intervals for regression lines with estimating equation fits

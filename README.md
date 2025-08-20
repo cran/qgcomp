@@ -1,4 +1,4 @@
-`qgcomp` v2.18.4
+`qgcomp` v2.18.7
 
 
 

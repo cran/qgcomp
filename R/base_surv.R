@@ -155,7 +155,7 @@ coxmsm_fit <- function(
   names(thecall) <- gsub("qdata", "data", names(thecall))
   m <- match(c("formula", "data", "weights", "offset"), names(thecall), 0L)
   #m <- match(c("f", "data", "weights", "offset"), names(thecall), 0L)
-  hasweights = ifelse("weights" %in% names(thecall), TRUE, FALSE)
+  hasweights = ("weights" %in% names(thecall))
   thecall <- thecall[c(1L, m)]
   thecall$drop.unused.levels <- TRUE
   
@@ -309,7 +309,7 @@ qgcomp.cox.noboot <- function (f, data, expnms = NULL, q = 4, breaks = NULL,
   #' id/cluster)
   #' @param weights "case weights" - passed to the "weight" argument of 
   #' \code{\link[survival]{coxph}}
-  #' @param cluster not yet implemented
+  #' @param cluster (from coxph function help) optional variable which clusters the observations, for the purposes of a robust variance. If present, it implies robust. This variable will normally be found in data.
   #' @param alpha alpha level for confidence limit calculation
   #' @param ... arguments to coxph
   #' @seealso \code{\link[qgcomp]{qgcomp.cox.boot}}, \code{\link[qgcomp]{qgcomp.glm.boot}}, 
@@ -344,32 +344,38 @@ qgcomp.cox.noboot <- function (f, data, expnms = NULL, q = 4, breaks = NULL,
   #' # not run: bootstrapped version is much slower
   #' (obj2 <- qgcomp.cox.boot(f, expnms = expnms, data = dat, B=200, MCsize=20000))
   #' }
-
+  
   of <- f
   newform <- terms(f, data = data)
   class(newform) <- "formula"
-
+  
   nobs = nrow(data)
   origcall <- thecall <- match.call(expand.dots = FALSE)
   names(thecall) <- gsub("f", "formula", names(thecall))
-  m <- match(c("f", "data", "weights", "offset"), names(thecall), 0L)
+  m <- match(c("f", "data", "weights", "offset", "cluster"), names(thecall), 0L)
   #m <- match(c("f", "data", "weights", "offset"), names(thecall), 0L)
-  hasweights = ifelse("weights" %in% names(thecall), TRUE, FALSE)
+  hasweights = ("weights" %in% names(thecall))
+  hascluster = ("weights" %in% names(thecall))
   thecall <- thecall[c(1L, m)]
   thecall$drop.unused.levels <- TRUE
+  thecall$na.action <- identity
   
   thecall[[1L]] <- quote(stats::model.frame)
   thecalle <- eval(thecall, parent.frame())
   if(hasweights){
     data$weights <- as.vector(model.weights(thecalle))
-  } else data$weights = rep(1, nobs)
-
+    #} else data$weights = rep(1, nobs)
+  } else weights=NULL
+  if(hascluster){
+    data$cluster <- as.vector(thecalle$`(cluster)`)
+  } else cluster=NULL
+  
   if (is.null(expnms)) {
     message("Including all model terms as exposures of interest")
-  
+    
     #expnms <- attr(terms(f, data = data), "term.labels")
     expnms <- attr(newform, "term.labels")
-  
+    
   }
   if (!is.null(q) | !is.null(breaks)) {
     ql <- quantize(data, expnms, q, breaks)
@@ -384,7 +390,7 @@ qgcomp.cox.noboot <- function (f, data, expnms = NULL, q = 4, breaks = NULL,
   environment(newform) <- list2env(list(qdata=qdata))
   fit <- coxph(newform, data = qdata,
                weights=weights, 
-               #cluster=cluster,
+               cluster=cluster,
                ...)
   coxfam = list(family='cox', link='log', linkfun=log)
   class(coxfam) = "family"
@@ -489,7 +495,7 @@ qgcomp.cox.boot <- function(f, data, expnms=NULL, q=4, breaks=NULL,
   #' errors via bootstrapping.
   #' @param weights "case weights" - passed to the "weight" argument of 
   #' \code{\link[survival]{coxph}}
-  #' @param cluster not yet implemented
+  #' @param cluster not implemented (here, "id" plays the same role as cluster plays in cqgcomp.cox.noboot)
   #' @param alpha alpha level for confidence limit calculation
   #' @param B integer: number of bootstrap iterations (this should typically be >=200,
   #'  though it is set lower in examples to improve run-time).
@@ -555,14 +561,19 @@ qgcomp.cox.boot <- function(f, data, expnms=NULL, q=4, breaks=NULL,
   nobs = nrow(data)
   origcall <- thecall <- match.call(expand.dots = FALSE)
   names(thecall) <- gsub("f", "formula", names(thecall))
-  m <- match(c("f", "data", "weights", "offset"), names(thecall), 0L)
+  m <- match(c("f", "data", "weights", "offset", "cluster"), names(thecall), 0L)
   #m <- match(c("f", "data", "weights", "offset"), names(thecall), 0L)
-  hasweights = ifelse("weights" %in% names(thecall), TRUE, FALSE)
+  hasweights = ("weights" %in% names(thecall))
+  hascluster = ("cluster" %in% names(thecall))
   thecall <- thecall[c(1L, m)]
   thecall$drop.unused.levels <- TRUE
+  thecall$na.action <- identity
   
   thecall[[1L]] <- quote(stats::model.frame)
   thecalle <- eval(thecall, parent.frame())
+  if(hascluster){
+    data$cluster <- as.vector(thecalle$`(cluster)`)
+  } else cluster=NULL
   if(hasweights){
     data$weights <- as.vector(model.weights(thecalle))
   } else data$weights = rep(1, nobs)
@@ -685,11 +696,10 @@ qgcomp.cox.boot <- function(f, data, expnms=NULL, q=4, breaks=NULL,
     alpha=alpha, call=origcall, hasintercept=FALSE
   )
   if(msmfit$fit$family$family=='cox'){
-    res$zstat <- tstat
-    res$pval <- pvalz
+    res = .qgcomp_object_add(res, zstat=tstat, pval=pvalz)
   } else{
     stop("MSM fit is not a cox model, which is an unexpected bug. 
-         Send any relevant info to akeil@unc.edu")
+         Send any relevant info to keilap@nih.gov")
   }
   attr(res, "class") <- c("survqgcompfit", attr(res, "class"))
   res
@@ -757,7 +767,7 @@ qgcomp.cox.boot <- function(f, data, expnms=NULL, q=4, breaks=NULL,
 #' f1 = survival::Surv(time, d)~x1 + x2 + z
 #' (fit1 <- survival::coxph(f1, data = dat))
 #' (obj <- qgcomp.cox.noboot(f1, expnms = expnms, data = dat))
-#' f1s = survival::Surv(time, d)~x1 + x2 + strata(z)
+#' f1s = survival::Surv(time, d)~x1 + x2 + survival::strata(z)
 #' (fit1s <- survival::coxph(f1s, data = dat))
 #' (objs <- qgcomp.cox.noboot(f1s, expnms = expnms, data = dat))
 #' #### now doing a case-cohort analysis

@@ -105,15 +105,16 @@ zimsm_fit <- function(
   names(thecall) <- gsub("f", "formula", names(thecall))
   names(thecall) <- gsub("qdata", "data", names(thecall))
   m <- match(c("formula", "data", "weights", "offset"), names(thecall), 0L)
-  hasweights = ifelse("weights" %in% names(thecall), TRUE, FALSE)
+  hasweights = ("weights" %in% names(thecall))
   thecall <- thecall[c(1L, m)]
   thecall$drop.unused.levels <- TRUE
+  thecall$na.action <- identity
   
   thecall[[1L]] <- quote(stats::model.frame)
   thecalle <- eval(thecall, parent.frame())
   if(hasweights){
     qdata$weights <- as.vector(model.weights(thecalle))
-  } else qdata$weights = rep(1, nobs)
+  } else data$weights <- rep(1,nobs)
 
   if(is.null(id)) {
     id = "id__"
@@ -289,7 +290,7 @@ qgcomp.zi.noboot <- function(f,
   origcall <- thecall <- match.call(expand.dots = FALSE)
   names(thecall) <- gsub("f", "formula", names(thecall))
   m <- match(c("formula", "data", "weights", "offset"), names(thecall), 0L)
-  hasweights = ifelse("weights" %in% names(thecall), TRUE, FALSE)
+  hasweights = ("weights" %in% names(thecall))
   thecall <- thecall[c(1L, m)]
   thecall$drop.unused.levels <- TRUE
   
@@ -297,7 +298,7 @@ qgcomp.zi.noboot <- function(f,
   thecalle <- eval(thecall, parent.frame())
   if(hasweights){
     data$weights <- as.vector(model.weights(thecalle))
-  } else data$weights = rep(1, nobs)
+  } else data$weights <- rep(1,nobs)
 
 
   if (is.null(expnms)) {
@@ -556,7 +557,7 @@ qgcomp.zi.boot <- function(f,
   origcall <- thecall <- match.call(expand.dots = FALSE)
   names(thecall) <- gsub("f", "formula", names(thecall))
   m <- match(c("formula", "data", "weights", "offset"), names(thecall), 0L)
-  hasweights = ifelse("weights" %in% names(thecall), TRUE, FALSE)
+  hasweights = ("weights" %in% names(thecall))
   thecall <- thecall[c(1L, m)]
   thecall$drop.unused.levels <- TRUE
   
@@ -564,7 +565,7 @@ qgcomp.zi.boot <- function(f,
   thecalle <- eval(thecall, parent.frame())
   if(hasweights){
     data$weights <- as.vector(model.weights(thecalle))
-  } else data$weights = rep(1, nobs)
+  } else data$weights <- rep(1,nobs)
 
 
   if (is.null(expnms)) {
