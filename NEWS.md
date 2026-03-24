@@ -1,4 +1,16 @@
 
+# qgcomp v2.18.10
+## Major changes
+- None
+
+## Minor changes
+- add new descriptive error to qgcomp.cox.boot for missing data (resolve https://github.com/alexpkeil1/qgcomp/issues/14)
+- Documentation: changed example in `mice.impute.leftcenslognorm` function to accomodate breaking change in `mice` package
+
+## Bug fixes
+- none
+
+
 # qgcomp v2.18.7
 ## Major changes
 - None

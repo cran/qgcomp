@@ -1,7 +1,7 @@
 Package: qgcomp
 Title: Quantile G-Computation
-Version: 2.18.7
-Date: 2025-08-20
+Version: 2.18.10
+Date: 2026-03-24
 Authors@R: 
     person("Alexander", "Keil", , "alex.keil@nih.gov", role = c("aut", "cre"))
 Description: G-computation for a set of time-fixed exposures with
@@ -25,10 +25,10 @@ Suggests: broom, devtools, knitr, markdown, MASS, mice
 VignetteBuilder: knitr
 Encoding: UTF-8
 Language: en-US
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.3
 NeedsCompilation: no
-Packaged: 2025-08-20 20:05:06 UTC; keilap
+Packaged: 2026-03-24 12:42:18 UTC; keilap
 Author: Alexander Keil [aut, cre]
 Maintainer: Alexander Keil <alex.keil@nih.gov>
 Repository: CRAN
-Date/Publication: 2025-08-20 20:40:02 UTC
+Date/Publication: 2026-03-24 13:20:02 UTC
