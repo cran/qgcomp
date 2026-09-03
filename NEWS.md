@@ -1,4 +1,25 @@
 
+# qgcomp v2.19.2
+## Major changes
+- None
+
+## Minor changes
+- None
+
+## Bug fixes
+- Fixed typo related to https://github.com/alexpkeil1/qgcomp/issues/53
+
+# qgcomp v2.19.0
+## Major changes
+- Introduced experimental partial-average estimation: add .qgcomp.partials_avg and .qgcomp.partials_avg_bootci implementations (with future-based resampling, Rubin-style variance pooling and bootstrap CIs)
+
+## Minor changes
+- None
+
+## Bug fixes
+- Fixed typo related to https://github.com/alexpkeil1/qgcomp/issues/53
+
+
 # qgcomp v2.18.10
 ## Major changes
 - None

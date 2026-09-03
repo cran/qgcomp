@@ -127,13 +127,14 @@ rr = qgcomp.multinomial.boot(
  B = 5, # set to higher values in real examples
  MCsize = 100,  # set to higher values in small samples
  )
-
+\dontrun{
 rr2 = qgcomp.multinomial.noboot(
  f0, 
  expnms = mixture,
  q=4, 
  data = smallmetals
  )
+ }
  
  ### 5: Create summary qgcomp object for nice printing ####
  
@@ -158,6 +159,7 @@ qdat = simdata_quantized(
   data = qdat
  )
  
+\dontrun{
  rr_sim2 = qgcomp.multinomial.boot(
   y~x1+x2+x3+x4, 
   expnms = c("x1", "x2", "x3", "x4"),
@@ -165,22 +167,23 @@ qdat = simdata_quantized(
   data = qdat,
   B=1
  )
+ }
 
 }
 \seealso{
-Other qgcomp_methods: 
-\code{\link{qgcomp.cch.noboot}()},
-\code{\link{qgcomp.cox.boot}()},
-\code{\link{qgcomp.cox.noboot}()},
-\code{\link{qgcomp.glm.boot}()},
-\code{\link{qgcomp.glm.ee}()},
-\code{\link{qgcomp.glm.noboot}()},
-\code{\link{qgcomp.hurdle.boot}()},
-\code{\link{qgcomp.hurdle.noboot}()},
-\code{\link{qgcomp.multinomial.noboot}()},
-\code{\link{qgcomp.partials}()},
-\code{\link{qgcomp.zi.boot}()},
-\code{\link{qgcomp.zi.noboot}()}
+Other qgcomp_methods:
+\code{\link[=qgcomp.cch.noboot]{qgcomp.cch.noboot()}},
+\code{\link[=qgcomp.cox.boot]{qgcomp.cox.boot()}},
+\code{\link[=qgcomp.cox.noboot]{qgcomp.cox.noboot()}},
+\code{\link[=qgcomp.glm.boot]{qgcomp.glm.boot()}},
+\code{\link[=qgcomp.glm.ee]{qgcomp.glm.ee()}},
+\code{\link[=qgcomp.glm.noboot]{qgcomp.glm.noboot()}},
+\code{\link[=qgcomp.hurdle.boot]{qgcomp.hurdle.boot()}},
+\code{\link[=qgcomp.hurdle.noboot]{qgcomp.hurdle.noboot()}},
+\code{\link[=qgcomp.multinomial.noboot]{qgcomp.multinomial.noboot()}},
+\code{\link[=qgcomp.partials]{qgcomp.partials()}},
+\code{\link[=qgcomp.zi.boot]{qgcomp.zi.boot()}},
+\code{\link[=qgcomp.zi.noboot]{qgcomp.zi.noboot()}}
 }
 \concept{qgcomp_methods}
 \concept{variance mixtures}
