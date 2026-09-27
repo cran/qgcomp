@@ -1,4 +1,14 @@
 
+# qgcomp v2.19.6
+## Major changes
+- None
+
+## Minor changes
+- None
+
+## Bug fixes
+- Fixed frequent plot related issue per https://github.com/alexpkeil1/qgcomp/issues/34
+
 # qgcomp v2.19.2
 ## Major changes
 - None
